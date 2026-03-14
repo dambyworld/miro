@@ -31,6 +31,18 @@ cargo build --release
 target/release/miro
 ```
 
+현재 생성된 단일 바이너리:
+
+```bash
+/Users/cozyai/dev/.miro/target/release/miro
+```
+
+바이너리 직접 실행:
+
+```bash
+/Users/cozyai/dev/.miro/target/release/miro
+```
+
 ## 지원 기능
 
 1. `codex`, `claude-code` 세션 목록 조회
@@ -66,6 +78,12 @@ target/release/miro
 cargo run
 ```
 
+릴리스 바이너리 직접 실행:
+
+```bash
+/Users/cozyai/dev/.miro/target/release/miro
+```
+
 키 바인딩:
 
 - `Up` / `Down`: 세션 이동
@@ -87,6 +105,7 @@ cargo run
 
 ```bash
 cargo run -- list
+/Users/cozyai/dev/.miro/target/release/miro list
 ```
 
 provider 필터:
@@ -106,6 +125,7 @@ cargo run -- list --output json
 
 ```bash
 cargo run -- resume <session-id>
+/Users/cozyai/dev/.miro/target/release/miro resume <session-id>
 ```
 
 provider를 명시해야 할 때:
@@ -119,6 +139,7 @@ cargo run -- resume <session-id> --provider claude-code
 
 ```bash
 cargo run -- delete <session-id> --yes
+/Users/cozyai/dev/.miro/target/release/miro delete <session-id> --yes
 ```
 
 provider를 명시해야 할 때:

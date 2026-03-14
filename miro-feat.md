@@ -15,6 +15,7 @@
 - `claude-code`는 `~/.claude/projects/**/sessions-index.json`과 세션 JSONL을 사용
 - 목록 표시 제목은 세션 ID가 아니라 사람이 읽을 수 있는 `thread_name`, `summary`, 마지막 대화 문구를 우선 사용
 - 선택된 세션은 TUI에서 하이라이트 배경과 굵은 텍스트로 강조
+- 릴리스 단일 바이너리는 `target/release/miro`에 생성
 
 ## 구현 파일
 
@@ -55,3 +56,4 @@
 - provider 텍스트 추출 로직 단위 테스트
 - 인덱스 파싱 단위 테스트
 - 삭제 시 인덱스 재작성 검증
+- `cargo run -- list --provider codex` 스모크 실행 확인
