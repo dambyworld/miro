@@ -1,5 +1,6 @@
 mod app;
 mod cli;
+pub(crate) mod config;
 mod model;
 mod provider;
 mod theme;
@@ -12,6 +13,7 @@ use clap::Parser;
 
 use crate::app::SessionManager;
 use crate::cli::{Cli, Commands, ListOutput};
+use crate::config::MiroConfig;
 use crate::model::{ProviderKind, SessionRecord};
 use crate::theme::{Theme, ThemeName};
 
@@ -20,7 +22,13 @@ pub use crate::model::{ProviderKind as PublicProviderKind, SessionRecord as Publ
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
     let manager = SessionManager::discover()?;
-    let theme = Theme::get(cli.theme);
+
+    let saved = MiroConfig::load();
+    let theme_name = cli
+        .theme
+        .or_else(|| saved.theme_name())
+        .unwrap_or(ThemeName::TomorrowNightBlue);
+    let theme = Theme::get(theme_name);
 
     match cli.command {
         Some(Commands::Themes) => list_themes(),

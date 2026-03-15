@@ -9,6 +9,7 @@
 - `--theme <theme-id>` CLI 옵션 추가
 - `themes` 메뉴 명령 추가
 - `ThemeName::cli_id()` 메서드 추가 (list_themes 하드코딩 제거)
+- **테마 선택 유지**: TUI에서 선택한 테마를 `~/.config/miro/config.toml`에 자동 저장/복원
 - 테마 관련 테스트 추가
 - 매뉴얼 업데이트
 
@@ -19,11 +20,15 @@
 - 기존 하드코딩 계열은 `Default` 테마로 정리한다.
 - 사용 가능한 테마 목록은 `miro themes`로 출력한다.
 - TUI는 더 이상 RGB 값을 직접 만들지 않고 `Theme`에서 스타일을 받아 렌더링한다.
-- 테마 선택은 초기 버전에서 `--theme` CLI 옵션으로만 제공한다.
+- 테마 선택은 `--theme` CLI 옵션 또는 TUI `t` 메뉴로 제공한다.
+- TUI에서 적용한 테마는 `~/.config/miro/config.toml`에 자동 저장된다.
+- 테마 적용 우선순위: `--theme` CLI (세션 한정) > 설정 파일 > `tomorrow-night-blue`.
+- `--theme` CLI 오버라이드는 설정 파일을 변경하지 않는다.
 
 ## 구현 파일
 
 - [src/theme.rs](/Users/cozyai/dev/.miro/src/theme.rs)
+- [src/config.rs](/Users/cozyai/dev/.miro/src/config.rs) — 신규: 설정 파일 로드/저장
 - [src/cli.rs](/Users/cozyai/dev/.miro/src/cli.rs)
 - [src/lib.rs](/Users/cozyai/dev/.miro/src/lib.rs)
 - [src/tui.rs](/Users/cozyai/dev/.miro/src/tui.rs)
@@ -88,13 +93,17 @@ miro --theme solarized-light
 
 ## 테스트 결과
 
-- `cargo test` 통과 (25개 테스트)
+- `cargo test` 통과 (31개 테스트)
 - `cargo build --release` 통과
 - `./target/release/miro themes` 14개 테마 정상 출력 확인
 - `./target/release/miro list --provider codex` 정상 출력 확인
 - `./target/release/miro --theme darcula-light list --provider claude-code` 정상 출력 확인
 - 신규 9종 테마 각각 단위 테스트 통과
 - `cli_id_matches_kebab_case` 테스트 통과
+- `from_cli_id` 파싱 테스트 통과
+- `config::save_and_load_roundtrip` 저장/복원 테스트 통과
+- 설정 파일 없을 때 기본값 사용 테스트 통과
+- 잘못된 theme 값 무시 테스트 통과
 
 ## 남은 범위
 

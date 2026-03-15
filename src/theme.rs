@@ -78,6 +78,26 @@ impl ThemeName {
         }
     }
 
+    pub fn from_cli_id(s: &str) -> Option<ThemeName> {
+        match s {
+            "default" => Some(Self::Default),
+            "tomorrow-night-blue" => Some(Self::TomorrowNightBlue),
+            "cursor-dark" => Some(Self::CursorDark),
+            "darcula-dark" => Some(Self::DarculaDark),
+            "darcula-light" => Some(Self::DarculaLight),
+            "dracula" => Some(Self::Dracula),
+            "nord" => Some(Self::Nord),
+            "one-dark" => Some(Self::OneDark),
+            "gruvbox-dark" => Some(Self::GruvboxDark),
+            "gruvbox-light" => Some(Self::GruvboxLight),
+            "catppuccin-mocha" => Some(Self::CatppuccinMocha),
+            "tokyo-night" => Some(Self::TokyoNight),
+            "solarized-dark" => Some(Self::SolarizedDark),
+            "solarized-light" => Some(Self::SolarizedLight),
+            _ => None,
+        }
+    }
+
     pub fn all() -> &'static [ThemeName] {
         &[
             ThemeName::TomorrowNightBlue,
@@ -763,6 +783,25 @@ mod tests {
     fn resolves_solarized_light_theme() {
         let theme = Theme::get(ThemeName::SolarizedLight);
         assert_eq!(theme.id, ThemeName::SolarizedLight);
+    }
+
+    #[test]
+    fn from_cli_id_parses_known_ids() {
+        assert_eq!(ThemeName::from_cli_id("dracula"), Some(ThemeName::Dracula));
+        assert_eq!(
+            ThemeName::from_cli_id("tomorrow-night-blue"),
+            Some(ThemeName::TomorrowNightBlue)
+        );
+        assert_eq!(
+            ThemeName::from_cli_id("catppuccin-mocha"),
+            Some(ThemeName::CatppuccinMocha)
+        );
+    }
+
+    #[test]
+    fn from_cli_id_returns_none_for_unknown() {
+        assert_eq!(ThemeName::from_cli_id("unknown"), None);
+        assert_eq!(ThemeName::from_cli_id(""), None);
     }
 
     #[test]
