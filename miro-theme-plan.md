@@ -467,3 +467,204 @@ Theme
 4. `display_name()`, `description()`이 각 테마에 정의된다.
 5. 단위 테스트가 각 테마에 추가된다.
 6. `miro-manual.md` 테마 목록이 갱신된다.
+
+---
+
+## 테마 선택 유지 기능 계획 (구현 보류)
+
+### 문제 정의
+
+현재 TUI 내에서 `t` 키로 테마를 바꿔도, miro를 종료하고 다시 실행하면 항상 `tomorrow-night-blue`로 초기화된다.
+`--theme` CLI 옵션은 매번 명시해야 하므로 불편하고, TUI 내 테마 메뉴의 선택이 세션 밖으로 이어지지 않는다.
+
+### 목표
+
+- TUI에서 마지막으로 선택한 테마가 다음 실행에도 자동 적용된다.
+- `--theme` CLI 옵션은 한 번만 적용되는 일회성 오버라이드로 유지한다.
+- 사용자가 별도로 설정하지 않아도 동작해야 한다 (설정 파일 자동 생성).
+
+### 설계 원칙
+
+1. 설정 파일은 사용자가 의식하지 않아도 자동으로 생성된다.
+2. `--theme` CLI 인자는 설정 파일을 덮어쓰지 않는다. 세션 한정 오버라이드다.
+3. 테마 적용 우선순위: `--theme` CLI (일회성) > 설정 파일 > 내장 기본값 (`tomorrow-night-blue`).
+4. 설정 파일 로드 실패는 조용히 무시하고 기본값으로 폴백한다.
+5. 설정 파일 저장 실패도 조용히 무시한다 (TUI 흐름을 끊지 않는다).
+
+### 설정 파일 위치와 형식
+
+#### 위치
+
+```
+~/.config/miro/config.toml
+```
+
+XDG 표준을 따른다. `dirs` 크레이트가 이미 의존성에 포함되어 있으므로 `dirs::config_dir()`로 경로를 얻는다.
+디렉터리가 없으면 첫 저장 시 자동 생성한다.
+
+#### 형식 (TOML)
+
+```toml
+theme = "dracula"
+```
+
+초기 버전은 `theme` 키 하나만 관리한다.
+향후 다른 사용자 설정(필터 기본값, 정렬 기준 등)을 추가하기 쉬운 구조다.
+
+### 필요한 크레이트 추가
+
+| 크레이트 | 용도 | 현재 상태 |
+|----------|------|-----------|
+| `toml` | config.toml 직렬화/역직렬화 | 미포함 → 추가 필요 |
+| `serde` | 구조체 직렬화 | 이미 포함 (`features = ["derive"]`) |
+| `dirs` | XDG 경로 조회 | 이미 포함 |
+
+`Cargo.toml`에 `toml = "0.8"` 추가 필요.
+
+### 신규 모듈: `src/config.rs`
+
+```rust
+use serde::{Deserialize, Serialize};
+use crate::theme::ThemeName;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct MiroConfig {
+    pub theme: Option<ThemeName>,
+}
+
+impl MiroConfig {
+    // ~/.config/miro/config.toml 로드. 파일 없으면 Default 반환.
+    pub fn load() -> Self { ... }
+
+    // theme 필드 하나만 저장. 실패해도 에러 전파 안 함.
+    pub fn save_theme(theme: ThemeName) { ... }
+}
+```
+
+`ThemeName`을 TOML에 저장하려면 kebab-case 문자열로 직렬화해야 한다.
+`serde(rename_all = "kebab-case")`로는 enum variant 이름(`TomorrowNightBlue`)이 변환되지 않으므로,
+별도 `Serialize`/`Deserialize` 구현 또는 `#[serde(rename = "...")]` 어노테이션이 필요하다.
+가장 단순한 접근은 `theme`를 `Option<String>`으로 저장하고, 로드 시 `ThemeName::from_cli_id(s)` 파서로 변환하는 것이다.
+
+```rust
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct MiroConfig {
+    pub theme: Option<String>,  // "dracula", "nord" 등 cli_id 문자열 그대로 저장
+}
+```
+
+로드 시 `ThemeName::from_cli_id(&s)`로 파싱하고, 인식 불가 값은 무시한다.
+
+`ThemeName`에 `from_cli_id(s: &str) -> Option<ThemeName>` 메서드를 추가한다.
+
+### `src/cli.rs` 변경: `--theme` 옵션을 `Option<ThemeName>`으로
+
+현재:
+```rust
+#[arg(long, value_enum, default_value_t = ThemeName::TomorrowNightBlue)]
+pub theme: ThemeName,
+```
+
+변경 후:
+```rust
+#[arg(long, value_enum)]
+pub theme: Option<ThemeName>,
+```
+
+`default_value_t`를 제거해야 "사용자가 `--theme`를 명시했는지 여부"를 `None`으로 감지할 수 있다.
+clap은 `Option<T>` 필드를 인자 미제공 시 자동으로 `None`으로 처리한다.
+
+### `src/lib.rs` 우선순위 로직
+
+```rust
+pub fn run() -> Result<()> {
+    let cli = Cli::parse();
+    let manager = SessionManager::discover()?;
+
+    let config = MiroConfig::load();
+    let theme_name = cli.theme
+        .or_else(|| config.theme_name())   // 설정 파일 값
+        .unwrap_or(ThemeName::TomorrowNightBlue);  // 내장 기본값
+
+    let theme = Theme::get(theme_name);
+    ...
+}
+```
+
+`cli.theme`이 `Some`이면 설정 파일을 무시하고, `None`이면 설정 파일 값을 사용한다.
+
+### `src/tui.rs` 저장 트리거: `apply_selected_theme()`
+
+```rust
+fn apply_selected_theme(&mut self) {
+    // 기존: self.theme 교체
+    // 추가: MiroConfig::save_theme(selected_theme_name);
+}
+```
+
+TUI에서 테마를 선택·적용할 때만 저장한다.
+`--theme` CLI 오버라이드로 실행한 경우에는 저장하지 않는다.
+
+### 변경 파일 목록
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `Cargo.toml` | `toml = "0.8"` 추가 |
+| `src/config.rs` | 신규: `MiroConfig` 로드/저장 |
+| `src/theme.rs` | `ThemeName::from_cli_id()` 추가 |
+| `src/cli.rs` | `theme` 필드를 `Option<ThemeName>`으로 변경, 테스트 갱신 |
+| `src/lib.rs` | 우선순위 로직 추가, `mod config` 선언 |
+| `src/tui.rs` | `apply_selected_theme()`에 `save_theme()` 호출 추가 |
+| `miro-manual.md` | 테마 유지 동작 설명 추가 |
+
+### 우선순위 로직 요약
+
+```
+실행 시 테마 결정:
+  1. --theme 명시됨         → 그 테마 사용, 저장 안 함
+  2. --theme 없음, 설정 있음 → 설정 파일 테마 사용
+  3. --theme 없음, 설정 없음 → tomorrow-night-blue 사용
+
+저장 시점:
+  - TUI t 메뉴에서 Enter로 테마 적용 시 → ~/.config/miro/config.toml 저장
+  - --theme CLI 오버라이드는 저장 안 함
+```
+
+### 테스트 계획
+
+#### 단위 테스트
+
+| 테스트 | 위치 |
+|--------|------|
+| `from_cli_id("dracula")` → `Some(ThemeName::Dracula)` | `theme.rs` |
+| `from_cli_id("unknown")` → `None` | `theme.rs` |
+| `MiroConfig::load()` — 파일 없을 때 `theme = None` 반환 | `config.rs` |
+| `MiroConfig::save_theme()` 후 `load()` — 저장된 값 반환 | `config.rs` |
+| `cli.theme`이 `None`일 때 clap 파싱 정상 동작 | `cli.rs` |
+| `--theme dracula` 파싱 후 `Some(ThemeName::Dracula)` | `cli.rs` |
+
+#### 수동 검증
+
+1. `miro` 실행 → TUI에서 `dracula` 선택 → 종료 후 재실행 → `dracula`가 적용되어 있는지 확인
+2. `miro --theme nord` 실행 → `nord` 적용되는지 확인 (저장 안 됨)
+3. 재실행 시 여전히 이전에 저장된 테마 유지 확인
+4. `~/.config/miro/config.toml` 파일 삭제 후 재실행 → `tomorrow-night-blue` 기본값 확인
+5. `~/.config/miro/config.toml`에 잘못된 theme 값 입력 후 재실행 → 에러 없이 기본값 사용 확인
+
+### 리스크와 대응
+
+| 리스크 | 대응 |
+|--------|------|
+| `config.toml` 저장 실패 (권한, 디스크) | 에러 전파 없이 조용히 무시. TUI 흐름 유지 |
+| 잘못된 `theme` 값이 저장되어 파싱 실패 | `from_cli_id()` 반환값이 `None`이면 기본값 사용 |
+| `--theme` 사용 시 설정 파일이 덮어써짐 | `Option<ThemeName>` 분기로 명시/미명시를 구분해 덮어쓰지 않음 |
+| 기존 `defaults_to_tomorrow_night_blue` 테스트 깨짐 | 테스트에서 `cli.theme == None`으로 조건 변경 |
+
+### 완료 기준
+
+1. `miro` 실행 후 TUI에서 테마 변경 시 `~/.config/miro/config.toml`이 생성/갱신된다.
+2. miro 재실행 시 마지막으로 선택한 테마가 자동 적용된다.
+3. `miro --theme <id>` 실행 시 해당 테마가 적용되나 설정 파일은 변경되지 않는다.
+4. 설정 파일이 없거나 값이 잘못되어도 에러 없이 `tomorrow-night-blue`로 시작한다.
+5. `cargo test` 전체 통과.
+6. `miro-manual.md`에 테마 유지 동작 설명이 추가된다.
