@@ -164,6 +164,12 @@ brew upgrade lovecat/tap/miro
 > Homebrew 외 사용자 소프트웨어가 없는 새로운 ephemeral VM에서 실행된다.
 > 개발 PC와 완전히 독립된 클린 환경이므로 miro 기설치 충돌 없이 검증 가능하다.
 
+> **개발 PC 영향 없음 (확실)**:
+> 배포 파이프라인 전 과정(GitHub Actions 빌드·릴리스·install-test, Tap 포뮬라 PR)은
+> 모두 원격 서버(GitHub)에서 실행된다.
+> `scripts/release.sh`를 로컬에서 직접 실행하지 않는 한,
+> 개발 PC의 Homebrew, 포뮬라, 설치된 miro 바이너리는 일절 변경되지 않는다.
+
 ### install-test job 계획
 
 ```yaml
