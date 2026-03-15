@@ -5,7 +5,7 @@
 `miro`는 Rust로 작성된 터미널 TUI 바이너리다.
 사용자가 `brew install` 명령 한 줄로 설치할 수 있도록 배포 파이프라인을 구성한다.
 
-> **구현 상태**: 계획 수립 단계 (구현 보류)
+> **구현 상태**: 구현 완료 (`miro-release-feat.md` 참고)
 
 ---
 
@@ -33,7 +33,7 @@
         ↓
 4. Homebrew Tap 포뮬라 자동 갱신 (url + sha256 패치)
         ↓
-5. brew install lovecat/tap/miro
+5. brew install Ruska-Zone/tap/miro
 ```
 
 ---
@@ -96,7 +96,7 @@ scripts/
 
 ### 4. Homebrew Tap
 
-저장소: `lovecat/homebrew-tap`
+저장소: `Ruska-Zone/homebrew-tap`
 
 포뮬라 파일: `Formula/miro.rb`
 
@@ -133,13 +133,13 @@ Tap 포뮬라 갱신은 `scripts/release.sh`가 릴리스 후 자동으로 PR을
 **신규 설치:**
 
 ```bash
-brew install lovecat/tap/miro
+brew install Ruska-Zone/tap/miro
 ```
 
 **업그레이드 (기설치 상태):**
 
 ```bash
-brew upgrade lovecat/tap/miro
+brew upgrade Ruska-Zone/tap/miro
 ```
 
 ---
@@ -179,7 +179,7 @@ install-test:
   steps:
     - name: Install via brew tap
       run: |
-        brew tap lovecat/tap
+        brew tap Ruska-Zone/tap
         brew install miro
 
     - name: Smoke test
@@ -195,7 +195,7 @@ install-test:
 
 ### 검증 항목
 
-- [ ] `brew install lovecat/tap/miro` 오류 없이 완료
+- [ ] `brew install Ruska-Zone/tap/miro` 오류 없이 완료
 - [ ] `miro --version` 이 `Cargo.toml`의 버전과 일치
 - [ ] 바이너리가 올바른 아키텍처로 빌드됨 (`file $(which miro)`)
 - [ ] 기설치 상태에서 `brew upgrade` 정상 동작
@@ -254,7 +254,7 @@ Tomorrow Night Blue (default) [tomorrow-night-blue]
 
 - [ ] `.github/workflows/release.yml` 작성
 - [ ] `scripts/release.sh` 작성 (sh 기반)
-- [ ] `lovecat/homebrew-tap` 저장소 생성
+- [ ] `Ruska-Zone/homebrew-tap` 저장소 생성
 - [ ] `Formula/miro.rb` 초기 포뮬라 작성
 - [ ] `Cargo.toml` 버전 bump 프로세스 문서화
 - [ ] 첫 릴리스 태그 `v0.1.0` 생성 및 검증

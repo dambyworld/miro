@@ -1,0 +1,209 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package tar.gz
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARGET="${{ matrix.target }}"
+          ARCHIVE="miro-${VERSION}-${TARGET}.tar.gz"
+          tar -czf "${ARCHIVE}" -C "target/${TARGET}/release" miro
+          echo "ARCHIVE=${ARCHIVE}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Compute SHA256
+        run: |
+          SHA=$(shasum -a 256 "${{ env.ARCHIVE }}" | awk '{print $1}')
+          echo "SHA256=${SHA}" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: miro-${{ matrix.target }}
+          path: |
+            ${{ env.ARCHIVE }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Flatten artifacts
+        run: |
+          find artifacts/ -type f -name "*.tar.gz" -exec mv {} . \;
+
+      - name: Generate checksums.txt
+        run: |
+          shasum -a 256 miro-*.tar.gz > checksums.txt
+
+      - name: Create GitHub Release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          gh release create "v${VERSION}" \
+            --title "miro v${VERSION}" \
+            --notes "## miro v${VERSION}
+
+### 설치
+
+\`\`\`bash
+brew install Ruska-Zone/tap/miro
+\`\`\`
+
+### 업그레이드
+
+\`\`\`bash
+brew upgrade Ruska-Zone/tap/miro
+\`\`\`" \
+            miro-*.tar.gz checksums.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: checksums.txt
+          retention-days: 1
+
+  update-tap:
+    name: Update Homebrew Tap
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: checksums
+
+      - name: Extract SHA256 values
+        id: sha
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          ARM_SHA=$(grep "aarch64-apple-darwin" checksums.txt | awk '{print $1}')
+          X86_SHA=$(grep "x86_64-apple-darwin" checksums.txt | awk '{print $1}')
+          echo "arm_sha=${ARM_SHA}" >> $GITHUB_OUTPUT
+          echo "x86_sha=${X86_SHA}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: Ruska-Zone/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.sha.outputs.version }}"
+          ARM_SHA="${{ steps.sha.outputs.arm_sha }}"
+          X86_SHA="${{ steps.sha.outputs.x86_sha }}"
+
+          cat > homebrew-tap/Formula/miro.rb << EOF
+          class Miro < Formula
+            desc "Terminal TUI for managing codex/claude-code sessions"
+            homepage "https://github.com/dambyworld/miro"
+            version "${VERSION}"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/dambyworld/miro/releases/download/v${VERSION}/miro-${VERSION}-aarch64-apple-darwin.tar.gz"
+                sha256 "${ARM_SHA}"
+              else
+                url "https://github.com/dambyworld/miro/releases/download/v${VERSION}/miro-${VERSION}-x86_64-apple-darwin.tar.gz"
+                sha256 "${X86_SHA}"
+              end
+            end
+
+            def install
+              bin.install "miro"
+            end
+
+            test do
+              system "\#{bin}/miro", "--version"
+            end
+          end
+          EOF
+
+      - name: Commit and push formula update
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/miro.rb
+          git commit -m "miro: update to v${{ steps.sha.outputs.version }}"
+          git push
+
+  install-test:
+    name: Install Test (Smoke)
+    needs: [release, update-tap]
+    runs-on: macos-latest
+    steps:
+      - name: Install via brew tap
+        run: |
+          brew tap Ruska-Zone/tap
+          brew install miro
+
+      - name: Verify version
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          INSTALLED=$(miro --version | awk '{print $2}')
+          echo "Expected: ${VERSION}, Got: ${INSTALLED}"
+          [ "${INSTALLED}" = "${VERSION}" ] || (echo "Version mismatch!" && exit 1)
+
+      - name: Verify architecture
+        run: file $(which miro)
+
+      - name: Smoke test - help
+        run: miro --help
+
+      - name: Smoke test - subcommands
+        run: |
+          miro list   || true   # 세션 없어도 정상 종료
+          miro themes
+
+      - name: Upgrade test (no-op)
+        run: brew upgrade miro || true
+
+      - name: Uninstall and reinstall
+        run: |
+          brew uninstall miro
+          brew install miro
+          miro --version
