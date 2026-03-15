@@ -14,12 +14,7 @@
 | 도구 | 역할 |
 |------|------|
 | `brew` | macOS 패키지 배포 채널 (Homebrew Tap) |
-| `bun` | 빌드/릴리스 자동화 스크립트 런타임 (미설치 시 자동 설치 또는 `sh` 폴백) |
-| `sh` | CI 단계별 셸 스크립트 / bun 없는 환경의 릴리스 폴백 |
-
-> **bun 미설치 대응**: `scripts/release.sh`를 `sh` 전용 폴백으로 병행 제공한다.
-> `release.ts` 실행 전 bun 존재 여부를 확인하고, 없으면 `npm i -g bun` 으로 자동 설치하거나
-> `release.sh`로 자동 전환한다.
+| `sh` | CI 단계별 셸 스크립트 및 릴리스 자동화 |
 
 > **기설치 대응**: miro가 이미 설치된 상태에서 재설치 또는 업그레이드하는 경우를 고려한다.
 > `brew install`은 이미 설치된 경우 오류를 반환하므로 `brew upgrade` 경로를 안내해야 한다.
@@ -84,26 +79,15 @@ jobs:
 
 ### 3. GitHub Release 생성
 
-릴리스 자동화는 `bun` 유무에 따라 두 경로로 분기한다.
+릴리스 자동화는 `scripts/release.sh` 단일 스크립트로 처리한다.
 
 ```
 scripts/
-  release.sh       # sh 전용 릴리스 스크립트 (bun 없는 환경, 기본 경로)
-  release.ts       # bun 릴리스 스크립트 (bun 설치 환경, 선택 경로)
-  install.sh       # 기존 로컬 설치 스크립트 (유지)
+  release.sh    # sh 릴리스 자동화 스크립트
+  install.sh    # 기존 로컬 설치 스크립트 (유지)
 ```
 
-**실행 진입점 (`scripts/release.sh` 상단 로직):**
-
-```sh
-#!/usr/bin/env sh
-if command -v bun >/dev/null 2>&1; then
-  exec bun run "$(dirname "$0")/release.ts" "$@"
-fi
-# bun 없으면 sh 구현으로 계속 진행
-```
-
-두 스크립트 모두 동일한 작업을 수행한다:
+`release.sh`가 수행하는 작업:
 - 아티팩트 다운로드
 - `tar.gz` 아카이브 생성 (`miro-{version}-{target}.tar.gz`)
 - SHA256 계산 및 `checksums.txt` 생성
@@ -142,7 +126,7 @@ class Miro < Formula
 end
 ```
 
-Tap 포뮬라 갱신은 `scripts/release.sh`(또는 `release.ts`)가 릴리스 후 자동으로 PR을 생성한다.
+Tap 포뮬라 갱신은 `scripts/release.sh`가 릴리스 후 자동으로 PR을 생성한다.
 
 ### 5. 설치 명령 (최종 사용자)
 
@@ -163,8 +147,7 @@ brew upgrade lovecat/tap/miro
 ## 필요한 작업 목록 (구현 보류)
 
 - [ ] `.github/workflows/release.yml` 작성
-- [ ] `scripts/release.sh` 작성 (sh 기반, bun 폴백 포함)
-- [ ] `scripts/release.ts` 작성 (bun 기반, 선택)
+- [ ] `scripts/release.sh` 작성 (sh 기반)
 - [ ] `lovecat/homebrew-tap` 저장소 생성
 - [ ] `Formula/miro.rb` 초기 포뮬라 작성
 - [ ] `Cargo.toml` 버전 bump 프로세스 문서화
