@@ -33,7 +33,7 @@
         ↓
 4. Homebrew Tap 포뮬라 자동 갱신 (url + sha256 패치)
         ↓
-5. brew install Ruska-Zone/tap/miro
+5. brew install dambyworld/tap/miro
 ```
 
 ---
@@ -96,7 +96,7 @@ scripts/
 
 ### 4. Homebrew Tap
 
-저장소: `Ruska-Zone/homebrew-tap`
+저장소: `dambyworld/homebrew-tap`
 
 포뮬라 파일: `Formula/miro.rb`
 
@@ -133,13 +133,13 @@ Tap 포뮬라 갱신은 `scripts/release.sh`가 릴리스 후 자동으로 PR을
 **신규 설치:**
 
 ```bash
-brew install Ruska-Zone/tap/miro
+brew install dambyworld/tap/miro
 ```
 
 **업그레이드 (기설치 상태):**
 
 ```bash
-brew upgrade Ruska-Zone/tap/miro
+brew upgrade dambyworld/tap/miro
 ```
 
 ---
@@ -179,7 +179,7 @@ install-test:
   steps:
     - name: Install via brew tap
       run: |
-        brew tap Ruska-Zone/tap
+        brew tap dambyworld/tap
         brew install miro
 
     - name: Smoke test
@@ -195,7 +195,7 @@ install-test:
 
 ### 검증 항목
 
-- [ ] `brew install Ruska-Zone/tap/miro` 오류 없이 완료
+- [ ] `brew install dambyworld/tap/miro` 오류 없이 완료
 - [ ] `miro --version` 이 `Cargo.toml`의 버전과 일치
 - [ ] 바이너리가 올바른 아키텍처로 빌드됨 (`file $(which miro)`)
 - [ ] 기설치 상태에서 `brew upgrade` 정상 동작
@@ -254,7 +254,7 @@ Tomorrow Night Blue (default) [tomorrow-night-blue]
 
 - [ ] `.github/workflows/release.yml` 작성
 - [ ] `scripts/release.sh` 작성 (sh 기반)
-- [ ] `Ruska-Zone/homebrew-tap` 저장소 생성
+- [ ] `dambyworld/homebrew-tap` 저장소 생성
 - [ ] `Formula/miro.rb` 초기 포뮬라 작성
 - [ ] `Cargo.toml` 버전 bump 프로세스 문서화
 - [ ] 첫 릴리스 태그 `v0.1.0` 생성 및 검증

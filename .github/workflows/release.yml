@@ -70,7 +70,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           gh release create "v${VERSION}" \
             --title "miro v${VERSION}" \
-            --notes "miro v${VERSION} - brew install Ruska-Zone/tap/miro" \
+            --notes "miro v${VERSION} - brew install dambyworld/tap/miro" \
             miro-*.tar.gz checksums.txt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
         with:
-          repository: Ruska-Zone/homebrew-tap
+          repository: dambyworld/homebrew-tap
           token: ${{ secrets.TAP_GITHUB_TOKEN }}
           path: homebrew-tap
 
@@ -130,7 +130,7 @@ jobs:
     steps:
       - name: Install via brew tap
         run: |
-          brew tap Ruska-Zone/tap
+          brew tap dambyworld/tap
           brew install miro
 
       - name: Verify version

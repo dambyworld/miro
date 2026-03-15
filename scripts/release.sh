@@ -56,13 +56,13 @@ gh release create "${TAG}" \
 ### 설치
 
 \`\`\`bash
-brew install Ruska-Zone/tap/miro
+brew install dambyworld/tap/miro
 \`\`\`
 
 ### 업그레이드
 
 \`\`\`bash
-brew upgrade Ruska-Zone/tap/miro
+brew upgrade dambyworld/tap/miro
 \`\`\`" \
   "${ARM_ARCHIVE}" "${X86_ARCHIVE}" checksums.txt
 
@@ -72,7 +72,7 @@ echo "[release] GitHub Release 완료: https://github.com/dambyworld/miro/releas
 echo ""
 echo "[release] ──────────────────────────────────────────────────"
 echo "[release] Homebrew Tap 포뮬라를 수동으로 업데이트하세요."
-echo "[release] 저장소: Ruska-Zone/homebrew-tap"
+echo "[release] 저장소: dambyworld/homebrew-tap"
 echo "[release] 파일:   Formula/miro.rb"
 echo ""
 echo "[release] aarch64 SHA256: ${ARM_SHA}"
