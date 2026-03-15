@@ -1,16 +1,18 @@
 use std::io::{self, Stdout};
 
 use anyhow::Result;
+use crossterm::cursor::{Hide, Show};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::execute;
 use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+    Clear as TerminalClear, ClearType, EnterAlternateScreen, LeaveAlternateScreen,
+    disable_raw_mode, enable_raw_mode,
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Text};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
 
 use crate::app::SessionManager;
@@ -28,15 +30,21 @@ pub fn run_tui(manager: SessionManager) -> Result<()> {
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        TerminalClear(ClearType::All),
+        Hide
+    )?;
     let backend = CrosstermBackend::new(stdout);
-    Ok(Terminal::new(backend)?)
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+    Ok(terminal)
 }
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    execute!(terminal.backend_mut(), Show, LeaveAlternateScreen)?;
     Ok(())
 }
 
@@ -96,9 +104,15 @@ fn run_event_loop(
                     restore_terminal(terminal)?;
                     let result = run_resume_command(&session);
                     init_terminal_state_after_command(terminal)?;
-                    result?;
-                    app.status = Some("resumed session and returned to Miro".to_string());
-                    app.reload()?;
+                    match result {
+                        Ok(()) => {
+                            app.status = Some("resumed session and returned to Miro".to_string());
+                            app.reload()?;
+                        }
+                        Err(error) => {
+                            app.status = Some(format!("resume failed: {error}"));
+                        }
+                    }
                 }
             }
             _ => {}
@@ -111,7 +125,15 @@ fn init_terminal_state_after_command(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
 ) -> Result<()> {
     enable_raw_mode()?;
-    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        EnterAlternateScreen,
+        TerminalClear(ClearType::All),
+        Hide
+    )?;
+    terminal.clear()?;
+    terminal.hide_cursor()?;
+    terminal.autoresize()?;
     Ok(())
 }
 
@@ -224,7 +246,7 @@ impl AppState {
             .constraints([
                 Constraint::Length(3),
                 Constraint::Min(10),
-                Constraint::Length(4),
+                Constraint::Length(3),
             ])
             .split(frame.area());
 
@@ -240,16 +262,18 @@ impl AppState {
             format!("search: {}", self.query)
         };
         let header = Paragraph::new(format!(
-            "Miro  filter: {}  sessions: {}  {}",
+            " MIRO  filter:{}  sessions:{}  {} ",
             filter_label,
             self.filtered_sessions().len(),
             search_label
         ))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Session Browser"),
-        );
+        .style(
+            Style::default()
+                .fg(Color::Rgb(255, 248, 214))
+                .bg(Color::Rgb(30, 52, 88))
+                .add_modifier(Modifier::BOLD),
+        )
+        .block(Block::default().borders(Borders::ALL).title("Browser"));
         frame.render_widget(header, chunks[0]);
 
         let filtered = self.filtered_sessions();
@@ -260,26 +284,50 @@ impl AppState {
                 .iter()
                 .map(|session| {
                     let preview = session.preview.as_deref().unwrap_or("-");
-                    ListItem::new(Text::from(vec![
-                        Line::from(format!("[{}] {}", session.provider.as_str(), session.title)),
-                        Line::from(format!("  {}", preview)),
-                        Line::from(format!(
-                            "  {}  {}",
-                            session.cwd.display(),
-                            session.updated_at.format("%Y-%m-%d %H:%M")
-                        )),
+                    let provider_style = match session.provider {
+                        ProviderKind::Codex => Style::default()
+                            .fg(Color::Rgb(255, 179, 71))
+                            .add_modifier(Modifier::BOLD),
+                        ProviderKind::ClaudeCode => Style::default()
+                            .fg(Color::Rgb(101, 214, 173))
+                            .add_modifier(Modifier::BOLD),
+                    };
+                    let title_style = Style::default().fg(Color::Rgb(244, 244, 235));
+                    let preview_style = Style::default().fg(Color::Rgb(144, 198, 249));
+                    let meta_style = Style::default().fg(Color::Rgb(148, 153, 168));
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(format!("{: <7}", session.provider.as_str()), provider_style),
+                        Span::raw(" "),
+                        Span::styled(session.title.clone(), title_style),
+                        Span::raw("  "),
+                        Span::styled(preview.to_string(), preview_style),
+                        Span::raw("  "),
+                        Span::styled(
+                            format!(
+                                "{}  {}",
+                                session.cwd.display(),
+                                session.updated_at.format("%m-%d %H:%M")
+                            ),
+                            meta_style,
+                        ),
                     ]))
                 })
                 .collect()
         };
 
         let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Sessions"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Sessions")
+                    .border_style(Style::default().fg(Color::Rgb(74, 99, 131))),
+            )
             .highlight_style(
                 Style::default()
-                    .bg(Color::Rgb(32, 58, 90))
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
+                    .bg(Color::Rgb(61, 35, 94))
+                    .fg(Color::Rgb(255, 250, 230))
+                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
             );
         let mut state = ListState::default();
         if !filtered.is_empty() {
@@ -287,11 +335,28 @@ impl AppState {
         }
         frame.render_stateful_widget(list, chunks[1], &mut state);
 
-        let status = self.status.as_deref().unwrap_or(
-            "Up/Down move  Enter resume  d delete  f filter  / search  r refresh  q quit",
+        let help_text =
+            " Up/Down move  Enter resume  d delete  f filter  / search  r refresh  q quit ";
+        let status_text = self.status.as_deref().unwrap_or(" ready ");
+        let footer = Paragraph::new(Text::from(Line::from(vec![
+            Span::styled(
+                help_text,
+                Style::default()
+                    .fg(Color::Rgb(255, 224, 102))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!("| {}", status_text),
+                Style::default().fg(Color::Rgb(214, 220, 230)),
+            ),
+        ])))
+        .style(Style::default().bg(Color::Rgb(23, 28, 38)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Rgb(74, 99, 131))),
         );
-        let footer =
-            Paragraph::new(status).block(Block::default().borders(Borders::ALL).title("Help"));
         frame.render_widget(footer, chunks[2]);
 
         if self.confirm_delete {
@@ -306,7 +371,11 @@ impl AppState {
                 "Nothing selected".to_string()
             };
             let dialog = Paragraph::new(body)
-                .style(Style::default().fg(Color::White).bg(Color::Rgb(70, 20, 20)))
+                .style(
+                    Style::default()
+                        .fg(Color::Rgb(255, 240, 232))
+                        .bg(Color::Rgb(104, 35, 46)),
+                )
                 .block(
                     Block::default()
                         .borders(Borders::ALL)

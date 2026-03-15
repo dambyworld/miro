@@ -78,8 +78,12 @@ fn list_sessions(
 
 pub(crate) fn run_resume_command(session: &SessionRecord) -> Result<()> {
     let command = session.provider.resume_command(&session.session_id);
-    let status = Command::new(&command.program)
-        .args(&command.args)
+    let mut process = Command::new(&command.program);
+    process.args(&command.args);
+    if session.cwd.exists() {
+        process.current_dir(&session.cwd);
+    }
+    let status = process
         .status()
         .with_context(|| format!("failed to launch {}", command.program))?;
     ensure_success(status, &command.program)

@@ -98,6 +98,7 @@ cargo run
 - `q`: 종료
 
 선택된 세션은 하이라이트 배경과 강조 텍스트로 표시된다.
+하단 푸터에는 항상 주요 메뉴 설명이 표시된다.
 
 ## CLI 사용법
 
@@ -134,6 +135,12 @@ provider를 명시해야 할 때:
 cargo run -- resume <session-id> --provider codex
 cargo run -- resume <session-id> --provider claude-code
 ```
+
+재진입 동작 메모:
+
+- `codex`, `claude-code` 모두 세션이 생성된 원래 작업 디렉터리를 기준으로 재진입을 시도한다.
+- TUI에서 재진입 실패가 발생해도 앱이 즉시 종료되지 않고 목록 화면으로 복귀한다.
+- 외부 세션을 종료하고 돌아왔을 때도 TUI 레이아웃이 다시 복구되도록 처리한다.
 
 ### 특정 세션 삭제
 
@@ -181,3 +188,4 @@ cargo test
 - `codex`와 `claude-code` 세션 구조가 향후 바뀌면 파싱 규칙도 같이 수정해야 한다.
 - 삭제는 로컬 파일과 인덱스 기준으로만 처리한다.
 - 재진입은 각 CLI가 제공하는 공식 `resume` 커맨드에 의존한다.
+- Claude 제목 품질은 세션 메타데이터에 따라 `/login`, `/exit` 같은 커맨드성 문구가 일부 포함될 수 있다.
