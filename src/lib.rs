@@ -2,6 +2,7 @@ mod app;
 mod cli;
 mod model;
 mod provider;
+mod theme;
 mod tui;
 
 use std::process::{Command, ExitStatus};
@@ -12,14 +13,17 @@ use clap::Parser;
 use crate::app::SessionManager;
 use crate::cli::{Cli, Commands, ListOutput};
 use crate::model::{ProviderKind, SessionRecord};
+use crate::theme::{Theme, ThemeName};
 
 pub use crate::model::{ProviderKind as PublicProviderKind, SessionRecord as PublicSessionRecord};
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
     let manager = SessionManager::discover()?;
+    let theme = Theme::get(cli.theme);
 
     match cli.command {
+        Some(Commands::Themes) => list_themes(),
         Some(Commands::List { provider, output }) => list_sessions(&manager, provider, output),
         Some(Commands::Resume {
             session_id,
@@ -45,8 +49,26 @@ pub fn run() -> Result<()> {
             );
             Ok(())
         }
-        None => tui::run_tui(manager),
+        None => tui::run_tui(manager, theme),
     }
+}
+
+fn list_themes() -> Result<()> {
+    for theme in ThemeName::all() {
+        let default_marker = if *theme == ThemeName::TomorrowNightBlue {
+            " (default)"
+        } else {
+            ""
+        };
+        println!(
+            "{}{} [{}]\n  {}\n",
+            theme.display_name(),
+            default_marker,
+            theme.cli_id(),
+            theme.description(),
+        );
+    }
+    Ok(())
 }
 
 fn list_sessions(

@@ -8,6 +8,8 @@
 
 - 계획 문서: `miro-plan.md`
 - 구현 메모: `miro-feat.md`
+- 테마 계획 문서: `miro-theme-plan.md`
+- 테마 구현 메모: `miro-theme-feat.md`
 
 ## 빌드와 실행
 
@@ -106,6 +108,49 @@ scripts/install-miro-global.sh install
 
 ## TUI 사용법
 
+### 테마
+
+- 기본 테마는 `Tomorrow Night Blue`다.
+- 테마는 `--theme` 옵션으로 선택할 수 있다.
+- 사용 가능한 테마 목록은 `miro themes`로 확인할 수 있다.
+- TUI 화면 안에서는 `t`로 테마 메뉴를 열 수 있다.
+- 테마 메뉴가 열리면 `Up` / `Down`으로 이동하고 `Enter`로 적용하며 `Esc` 또는 `t`로 닫는다.
+
+지원 테마 (총 14종):
+
+| CLI ID | 이름 | 계열 |
+|--------|------|------|
+| `tomorrow-night-blue` | Tomorrow Night Blue | 딥 블루 다크 (기본) |
+| `default` | Default | 블루-그레이 다크 |
+| `cursor-dark` | Cursor Dark | 슬레이트 다크 |
+| `darcula-dark` | Darcula Dark | JetBrains 다크 |
+| `darcula-light` | Darcula Light | 소프트 라이트 |
+| `dracula` | Dracula | 보라-검정 다크 |
+| `nord` | Nord | 북극 청회 다크 |
+| `one-dark` | One Dark | Atom 슬레이트 다크 |
+| `gruvbox-dark` | Gruvbox Dark | 황토 레트로 다크 |
+| `gruvbox-light` | Gruvbox Light | 황토 레트로 라이트 |
+| `catppuccin-mocha` | Catppuccin Mocha | 파스텔 라벤더 다크 |
+| `tokyo-night` | Tokyo Night | 심야 도시 다크 |
+| `solarized-dark` | Solarized Dark | 청록 다크 |
+| `solarized-light` | Solarized Light | 아이보리 라이트 |
+
+예시:
+
+```bash
+miro themes
+miro --theme tomorrow-night-blue
+miro --theme dracula
+miro --theme nord
+miro --theme one-dark
+miro --theme gruvbox-dark
+miro --theme catppuccin-mocha
+miro --theme tokyo-night
+miro --theme solarized-dark
+miro --theme solarized-light
+miro --theme gruvbox-light
+```
+
 기본 실행:
 
 ```bash
@@ -124,10 +169,13 @@ cargo run
 miro
 ```
 
+기본 실행 시 `Tomorrow Night Blue` 테마가 적용된다.
+
 키 바인딩:
 
 - `Up` / `Down`: 세션 이동
 - `Enter`: 선택 세션 재진입
+- `t`: 테마 메뉴 열기 또는 닫기
 - `d`: 삭제 확인 모달 열기
 - `y`: 삭제 확정
 - `n` 또는 `Esc`: 삭제 취소
@@ -139,6 +187,7 @@ miro
 
 선택된 세션은 하이라이트 배경과 강조 텍스트로 표시된다.
 하단 푸터에는 항상 주요 메뉴 설명이 표시된다.
+테마 메뉴가 열리면 현재 지원 테마 목록과 기본 테마 표시를 바로 확인할 수 있다.
 
 ## CLI 사용법
 
@@ -148,6 +197,15 @@ miro
 cargo run -- list
 /Users/cozyai/dev/.miro/target/release/miro list
 miro list
+miro --theme default list
+```
+
+### 테마 목록 조회
+
+```bash
+cargo run -- themes
+/Users/cozyai/dev/.miro/target/release/miro themes
+miro themes
 ```
 
 provider 필터:
@@ -225,6 +283,12 @@ cargo test
 - `claude-code` 메시지 텍스트 추출
 - `codex` 인덱스 날짜 파싱
 - `codex` 삭제 시 인덱스 재작성
+- 기본 테마가 `tomorrow-night-blue`인지 확인
+- `default` 테마 인자 파싱
+- `themes` 명령 파싱
+- 잘못된 테마 이름 입력 시 오류 메시지 검증 (14종 전부 포함)
+- 신규 9종 테마 각각 단위 테스트 (`dracula`, `nord`, `one-dark`, `gruvbox-dark`, `gruvbox-light`, `catppuccin-mocha`, `tokyo-night`, `solarized-dark`, `solarized-light`)
+- `cli_id()` 메서드 케밥케이스 검증
 
 ## 현재 한계
 
