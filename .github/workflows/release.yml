@@ -129,9 +129,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Install via brew tap
-        run: |
-          brew tap dambyworld/tap
-          brew install miro
+        run: brew install dambyworld/tap/miro
 
       - name: Verify version
         run: |
@@ -154,6 +152,6 @@ jobs:
 
       - name: Uninstall and reinstall
         run: |
-          brew uninstall miro
-          brew install miro
+          brew uninstall dambyworld/tap/miro
+          brew install dambyworld/tap/miro
           miro --version
