@@ -194,7 +194,54 @@ install-test:
 - [ ] 바이너리가 올바른 아키텍처로 빌드됨 (`file $(which miro)`)
 - [ ] 기설치 상태에서 `brew upgrade` 정상 동작
 - [ ] `brew uninstall miro` 후 재설치 정상 동작
+- [ ] `miro` 실행 시 오류 없이 정상 동작 — 아래 기준 스냅샷과 비교 검증
 
+#### 기준 스냅샷 (개발 PC 기준, v0.1.0)
+
+**`miro --version`**
+```
+miro 0.1.0
+```
+
+**`miro --help`**
+```
+Terminal TUI for Codex and Claude Code sessions
+
+Usage: miro [OPTIONS] [COMMAND]
+
+Commands:
+  themes
+  list
+  resume
+  delete
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --theme <THEME>  [possible values: default, tomorrow-night-blue,
+                        cursor-dark, darcula-dark, darcula-light, dracula,
+                        nord, one-dark, gruvbox-dark, gruvbox-light,
+                        catppuccin-mocha, tokyo-night, solarized-dark,
+                        solarized-light]
+  -h, --help           Print help
+  -V, --version        Print version
+```
+
+**`miro themes`** (테마 목록 첫 항목)
+```
+Tomorrow Night Blue (default) [tomorrow-night-blue]
+  Deep blue low-glare theme used as the default
+```
+
+**`miro list`** — 세션 목록 출력 형식 예시
+```
+[claude-code] <uuid>
+  <대화 요약>
+  cwd: <작업 디렉터리>
+  updated: <타임스탬프 UTC>
+```
+
+검증 기준: 서브커맨드(`list`, `themes`, `resume`, `delete`) 모두 오류 없이 응답하고,
+출력 형식이 위 스냅샷과 동일해야 한다.
 ---
 
 ## 필요한 작업 목록 (구현 보류)
