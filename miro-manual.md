@@ -116,6 +116,25 @@ scripts/install-miro-global.sh install
 - TUI 화면 안에서는 `t`로 테마 메뉴를 열 수 있다.
 - 테마 메뉴가 열리면 `Up` / `Down`으로 이동하고 `Enter`로 적용하며 `Esc` 또는 `t`로 닫는다.
 
+#### 테마 유지
+
+- TUI `t` 메뉴에서 `Enter`로 테마를 적용하면 `~/.config/miro/config.toml`에 자동 저장된다.
+- 다음 실행 시 저장된 테마가 자동으로 적용된다.
+- `--theme` CLI 옵션은 한 세션에만 적용되는 일회성 오버라이드다. 설정 파일을 변경하지 않는다.
+- 설정 파일이 없거나 값이 잘못되면 `tomorrow-night-blue`로 시작한다.
+
+테마 적용 우선순위:
+
+```
+--theme CLI 옵션 (세션 한정) > ~/.config/miro/config.toml > tomorrow-night-blue
+```
+
+설정 파일 예시 (`~/.config/miro/config.toml`):
+
+```toml
+theme = "dracula"
+```
+
 지원 테마 (총 14종):
 
 | CLI ID | 이름 | 계열 |
@@ -283,12 +302,15 @@ cargo test
 - `claude-code` 메시지 텍스트 추출
 - `codex` 인덱스 날짜 파싱
 - `codex` 삭제 시 인덱스 재작성
-- 기본 테마가 `tomorrow-night-blue`인지 확인
-- `default` 테마 인자 파싱
+- `--theme` 미지정 시 `None` 반환 확인
+- `--theme` 인자 파싱 (`default`, `tomorrow-night-blue` 등)
 - `themes` 명령 파싱
 - 잘못된 테마 이름 입력 시 오류 메시지 검증 (14종 전부 포함)
 - 신규 9종 테마 각각 단위 테스트 (`dracula`, `nord`, `one-dark`, `gruvbox-dark`, `gruvbox-light`, `catppuccin-mocha`, `tokyo-night`, `solarized-dark`, `solarized-light`)
 - `cli_id()` 메서드 케밥케이스 검증
+- `from_cli_id()` 알려진 ID 파싱 및 알 수 없는 값 `None` 반환
+- `MiroConfig::theme_name()` 유효/무효 값 처리
+- `MiroConfig` 저장/복원 roundtrip (tempfile 기반)
 
 ## 현재 한계
 

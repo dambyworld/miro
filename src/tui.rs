@@ -11,16 +11,17 @@ use crossterm::terminal::{
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph};
 
 use crate::app::SessionManager;
+use crate::config::MiroConfig;
 use crate::model::{ProviderKind, SessionRecord};
+use crate::theme::{Theme, ThemeName};
 use crate::run_resume_command;
 
-pub fn run_tui(manager: SessionManager) -> Result<()> {
-    let mut app = AppState::new(manager)?;
+pub fn run_tui(manager: SessionManager, theme: Theme) -> Result<()> {
+    let mut app = AppState::new(manager, theme)?;
     let mut terminal = init_terminal()?;
     let result = run_event_loop(&mut terminal, &mut app);
     restore_terminal(&mut terminal)?;
@@ -70,6 +71,17 @@ fn run_event_loop(
             continue;
         }
 
+        if app.theme_menu_open {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('t') => app.close_theme_menu(),
+                KeyCode::Up => app.select_previous_theme(),
+                KeyCode::Down => app.select_next_theme(),
+                KeyCode::Enter => app.apply_selected_theme(),
+                _ => {}
+            }
+            continue;
+        }
+
         if app.search_mode {
             match key.code {
                 KeyCode::Esc => app.search_mode = false,
@@ -94,6 +106,7 @@ fn run_event_loop(
             KeyCode::Char('/') => app.search_mode = true,
             KeyCode::Char('f') => app.cycle_provider_filter()?,
             KeyCode::Char('r') => app.reload()?,
+            KeyCode::Char('t') => app.open_theme_menu(),
             KeyCode::Char('d') => {
                 if app.selected_session().is_some() {
                     app.confirm_delete = true;
@@ -146,11 +159,18 @@ struct AppState {
     search_mode: bool,
     confirm_delete: bool,
     status: Option<String>,
+    theme: Theme,
+    theme_menu_open: bool,
+    theme_selected: usize,
 }
 
 impl AppState {
-    fn new(manager: SessionManager) -> Result<Self> {
+    fn new(manager: SessionManager, theme: Theme) -> Result<Self> {
         let sessions = manager.list_sessions(None)?;
+        let theme_selected = ThemeName::all()
+            .iter()
+            .position(|candidate| *candidate == theme.id)
+            .unwrap_or(0);
         Ok(Self {
             manager,
             sessions,
@@ -160,6 +180,9 @@ impl AppState {
             search_mode: false,
             confirm_delete: false,
             status: None,
+            theme,
+            theme_menu_open: false,
+            theme_selected,
         })
     }
 
@@ -240,6 +263,40 @@ impl AppState {
         Ok(())
     }
 
+    fn open_theme_menu(&mut self) {
+        self.theme_menu_open = true;
+        self.theme_selected = ThemeName::all()
+            .iter()
+            .position(|candidate| *candidate == self.theme.id)
+            .unwrap_or(0);
+    }
+
+    fn close_theme_menu(&mut self) {
+        self.theme_menu_open = false;
+    }
+
+    fn select_next_theme(&mut self) {
+        let len = ThemeName::all().len();
+        if len > 0 {
+            self.theme_selected = (self.theme_selected + 1).min(len - 1);
+        }
+    }
+
+    fn select_previous_theme(&mut self) {
+        self.theme_selected = self.theme_selected.saturating_sub(1);
+    }
+
+    fn apply_selected_theme(&mut self) {
+        let selected_theme = ThemeName::all()
+            .get(self.theme_selected)
+            .copied()
+            .unwrap_or(ThemeName::TomorrowNightBlue);
+        self.theme = Theme::get(selected_theme);
+        self.theme_menu_open = false;
+        self.status = Some(format!("theme changed to {}", selected_theme.display_name()));
+        MiroConfig::save_theme(selected_theme);
+    }
+
     fn draw(&self, frame: &mut ratatui::Frame) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -262,46 +319,43 @@ impl AppState {
             format!("search: {}", self.query)
         };
         let header = Paragraph::new(format!(
-            " MIRO  filter:{}  sessions:{}  {} ",
+            " MIRO  theme:{}  filter:{}  sessions:{}  {} ",
+            self.theme.id.display_name(),
             filter_label,
             self.filtered_sessions().len(),
             search_label
         ))
-        .style(
-            Style::default()
-                .fg(Color::Rgb(255, 248, 214))
-                .bg(Color::Rgb(30, 52, 88))
-                .add_modifier(Modifier::BOLD),
-        )
-        .block(Block::default().borders(Borders::ALL).title("Browser"));
+        .style(self.theme.header)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Browser")
+                .border_style(self.theme.header_border),
+        );
         frame.render_widget(header, chunks[0]);
 
         let filtered = self.filtered_sessions();
         let items: Vec<ListItem> = if filtered.is_empty() {
-            vec![ListItem::new("No sessions found")]
+            vec![ListItem::new(Line::from(vec![Span::styled(
+                "No sessions found",
+                self.theme.empty_state,
+            )]))]
         } else {
             filtered
                 .iter()
                 .map(|session| {
                     let preview = session.preview.as_deref().unwrap_or("-");
                     let provider_style = match session.provider {
-                        ProviderKind::Codex => Style::default()
-                            .fg(Color::Rgb(255, 179, 71))
-                            .add_modifier(Modifier::BOLD),
-                        ProviderKind::ClaudeCode => Style::default()
-                            .fg(Color::Rgb(101, 214, 173))
-                            .add_modifier(Modifier::BOLD),
+                        ProviderKind::Codex => self.theme.codex_badge,
+                        ProviderKind::ClaudeCode => self.theme.claude_badge,
                     };
-                    let title_style = Style::default().fg(Color::Rgb(244, 244, 235));
-                    let preview_style = Style::default().fg(Color::Rgb(144, 198, 249));
-                    let meta_style = Style::default().fg(Color::Rgb(148, 153, 168));
 
                     ListItem::new(Line::from(vec![
                         Span::styled(format!("{: <7}", session.provider.as_str()), provider_style),
                         Span::raw(" "),
-                        Span::styled(session.title.clone(), title_style),
+                        Span::styled(session.title.clone(), self.theme.title),
                         Span::raw("  "),
-                        Span::styled(preview.to_string(), preview_style),
+                        Span::styled(preview.to_string(), self.theme.preview),
                         Span::raw("  "),
                         Span::styled(
                             format!(
@@ -309,7 +363,7 @@ impl AppState {
                                 session.cwd.display(),
                                 session.updated_at.format("%m-%d %H:%M")
                             ),
-                            meta_style,
+                            self.theme.meta,
                         ),
                     ]))
                 })
@@ -321,14 +375,10 @@ impl AppState {
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Sessions")
-                    .border_style(Style::default().fg(Color::Rgb(74, 99, 131))),
+                    .border_style(self.theme.list_border),
             )
-            .highlight_style(
-                Style::default()
-                    .bg(Color::Rgb(61, 35, 94))
-                    .fg(Color::Rgb(255, 250, 230))
-                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-            );
+            .highlight_style(self.theme.selected_row)
+            .style(self.theme.app_background);
         let mut state = ListState::default();
         if !filtered.is_empty() {
             state.select(Some(self.selected.min(filtered.len() - 1)));
@@ -336,26 +386,18 @@ impl AppState {
         frame.render_stateful_widget(list, chunks[1], &mut state);
 
         let help_text =
-            " Up/Down move  Enter resume  d delete  f filter  / search  r refresh  q quit ";
+            " Up/Down move  Enter resume  t theme  d delete  f filter  / search  r refresh  q quit ";
         let status_text = self.status.as_deref().unwrap_or(" ready ");
         let footer = Paragraph::new(Text::from(Line::from(vec![
-            Span::styled(
-                help_text,
-                Style::default()
-                    .fg(Color::Rgb(255, 224, 102))
-                    .add_modifier(Modifier::BOLD),
-            ),
+            Span::styled(help_text, self.theme.footer_hint),
             Span::raw(" "),
-            Span::styled(
-                format!("| {}", status_text),
-                Style::default().fg(Color::Rgb(214, 220, 230)),
-            ),
+            Span::styled(format!("| {}", status_text), self.theme.footer_status),
         ])))
-        .style(Style::default().bg(Color::Rgb(23, 28, 38)))
+        .style(self.theme.footer)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Rgb(74, 99, 131))),
+                .border_style(self.theme.list_border),
         );
         frame.render_widget(footer, chunks[2]);
 
@@ -371,17 +413,50 @@ impl AppState {
                 "Nothing selected".to_string()
             };
             let dialog = Paragraph::new(body)
-                .style(
-                    Style::default()
-                        .fg(Color::Rgb(255, 240, 232))
-                        .bg(Color::Rgb(104, 35, 46)),
-                )
+                .style(self.theme.dialog)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title("Confirm Delete"),
+                        .title("Confirm Delete")
+                        .border_style(self.theme.dialog_border),
                 );
             frame.render_widget(dialog, area);
+        }
+
+        if self.theme_menu_open {
+            let area = centered_rect(68, 42, frame.area());
+            frame.render_widget(Clear, area);
+            let theme_items: Vec<ListItem> = ThemeName::all()
+                .iter()
+                .map(|theme| {
+                    let suffix = if *theme == ThemeName::TomorrowNightBlue {
+                        " (default)"
+                    } else {
+                        ""
+                    };
+                    ListItem::new(Line::from(vec![
+                        Span::styled(
+                            format!("{}{}", theme.display_name(), suffix),
+                            self.theme.title,
+                        ),
+                        Span::raw("  "),
+                        Span::styled(theme.description(), self.theme.meta),
+                    ]))
+                })
+                .collect();
+
+            let theme_list = List::new(theme_items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Theme Picker")
+                        .border_style(self.theme.header_border),
+                )
+                .highlight_style(self.theme.selected_row)
+                .style(self.theme.app_background);
+            let mut theme_state = ListState::default();
+            theme_state.select(Some(self.theme_selected));
+            frame.render_stateful_widget(theme_list, area, &mut theme_state);
         }
     }
 }

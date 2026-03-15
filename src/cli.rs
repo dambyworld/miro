@@ -10,8 +10,8 @@ use crate::theme::ThemeName;
     about = "Terminal TUI for Codex and Claude Code sessions"
 )]
 pub struct Cli {
-    #[arg(long, value_enum, default_value_t = ThemeName::TomorrowNightBlue)]
-    pub theme: ThemeName,
+    #[arg(long, value_enum)]
+    pub theme: Option<ThemeName>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -53,15 +53,21 @@ mod tests {
     use crate::theme::ThemeName;
 
     #[test]
-    fn defaults_to_tomorrow_night_blue() {
+    fn theme_is_none_when_not_specified() {
         let cli = Cli::parse_from(["miro"]);
-        assert_eq!(cli.theme, ThemeName::TomorrowNightBlue);
+        assert_eq!(cli.theme, None);
     }
 
     #[test]
     fn accepts_default_theme_argument() {
         let cli = Cli::parse_from(["miro", "--theme", "default"]);
-        assert_eq!(cli.theme, ThemeName::Default);
+        assert_eq!(cli.theme, Some(ThemeName::Default));
+    }
+
+    #[test]
+    fn accepts_tomorrow_night_blue_argument() {
+        let cli = Cli::parse_from(["miro", "--theme", "tomorrow-night-blue"]);
+        assert_eq!(cli.theme, Some(ThemeName::TomorrowNightBlue));
     }
 
     #[test]
