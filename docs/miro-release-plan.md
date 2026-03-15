@@ -160,6 +160,10 @@ brew upgrade lovecat/tap/miro
 
 권장 방법: **GitHub Actions install-test job** (자동화 가능, 매 릴리스마다 실행)
 
+> **격리 환경 여부**: GitHub Actions의 `runs-on: macos-latest`는 매 job마다
+> Homebrew 외 사용자 소프트웨어가 없는 새로운 ephemeral VM에서 실행된다.
+> 개발 PC와 완전히 독립된 클린 환경이므로 miro 기설치 충돌 없이 검증 가능하다.
+
 ### install-test job 계획
 
 ```yaml
