@@ -43,6 +43,40 @@ target/release/miro
 /Users/cozyai/dev/.miro/target/release/miro
 ```
 
+## 전역 실행 구성
+
+설치 스크립트:
+
+```bash
+scripts/install-miro-global.sh install
+```
+
+이 스크립트는 `~/bin/miro` 래퍼를 생성하거나 갱신한다.  
+래퍼는 현재 저장소의 릴리스 바이너리 `/Users/cozyai/dev/.miro/target/release/miro`를 호출한다.
+
+상태 확인:
+
+```bash
+scripts/install-miro-global.sh status
+which miro
+```
+
+제거:
+
+```bash
+scripts/install-miro-global.sh uninstall
+```
+
+업데이트 절차:
+
+```bash
+cargo build --release
+scripts/install-miro-global.sh install
+```
+
+프로젝트 경로가 바뀌면 기존 래퍼의 절대 경로가 깨질 수 있다.  
+이 경우 새 경로에서 설치 스크립트를 다시 실행해야 한다.
+
 ## 지원 기능
 
 1. `codex`, `claude-code` 세션 목록 조회
@@ -84,6 +118,12 @@ cargo run
 /Users/cozyai/dev/.miro/target/release/miro
 ```
 
+전역 명령 실행:
+
+```bash
+miro
+```
+
 키 바인딩:
 
 - `Up` / `Down`: 세션 이동
@@ -107,6 +147,7 @@ cargo run
 ```bash
 cargo run -- list
 /Users/cozyai/dev/.miro/target/release/miro list
+miro list
 ```
 
 provider 필터:
@@ -127,6 +168,7 @@ cargo run -- list --output json
 ```bash
 cargo run -- resume <session-id>
 /Users/cozyai/dev/.miro/target/release/miro resume <session-id>
+miro resume <session-id>
 ```
 
 provider를 명시해야 할 때:
@@ -147,6 +189,7 @@ cargo run -- resume <session-id> --provider claude-code
 ```bash
 cargo run -- delete <session-id> --yes
 /Users/cozyai/dev/.miro/target/release/miro delete <session-id> --yes
+miro delete <session-id> --yes
 ```
 
 provider를 명시해야 할 때:
