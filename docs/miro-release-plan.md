@@ -144,6 +144,55 @@ brew upgrade lovecat/tap/miro
 
 ---
 
+## 6. 배포 검증 (시뮬레이션 테스트)
+
+> **배경**: 개발 PC에는 소스 빌드된 miro가 이미 설치되어 있으므로,
+> 동일 PC에서 `brew install`로 재설치하거나 덮어써서는 안 된다.
+> 별도 격리 환경에서 배포 패키지의 설치·동작을 검증한다.
+
+### 검증 환경
+
+| 방법 | 설명 |
+|------|------|
+| **macOS VM** | UTM 또는 Parallels로 클린 macOS 인스턴스 구성 |
+| **GitHub Actions** | `release.yml`에 install-test job 추가 — 빌드 직후 brew tap/install 실행 |
+| **별도 계정** | 로컬 macOS의 다른 사용자 계정(miro 미설치 상태)에서 테스트 |
+
+권장 방법: **GitHub Actions install-test job** (자동화 가능, 매 릴리스마다 실행)
+
+### install-test job 계획
+
+```yaml
+install-test:
+  needs: release        # release job 완료 후 실행
+  runs-on: macos-latest
+  steps:
+    - name: Install via brew tap
+      run: |
+        brew tap lovecat/tap
+        brew install miro
+
+    - name: Smoke test
+      run: |
+        miro --version
+        # TUI 진입 없이 CLI 플래그만 검증
+
+    - name: Upgrade test
+      run: |
+        # 동일 버전 재설치 시 brew upgrade가 no-op으로 정상 처리되는지 확인
+        brew upgrade miro || true
+```
+
+### 검증 항목
+
+- [ ] `brew install lovecat/tap/miro` 오류 없이 완료
+- [ ] `miro --version` 이 `Cargo.toml`의 버전과 일치
+- [ ] 바이너리가 올바른 아키텍처로 빌드됨 (`file $(which miro)`)
+- [ ] 기설치 상태에서 `brew upgrade` 정상 동작
+- [ ] `brew uninstall miro` 후 재설치 정상 동작
+
+---
+
 ## 필요한 작업 목록 (구현 보류)
 
 - [ ] `.github/workflows/release.yml` 작성
@@ -152,6 +201,7 @@ brew upgrade lovecat/tap/miro
 - [ ] `Formula/miro.rb` 초기 포뮬라 작성
 - [ ] `Cargo.toml` 버전 bump 프로세스 문서화
 - [ ] 첫 릴리스 태그 `v0.1.0` 생성 및 검증
+- [ ] `release.yml`에 install-test job 추가 (배포 검증 자동화)
 
 ---
 
