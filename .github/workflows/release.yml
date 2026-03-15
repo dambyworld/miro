@@ -33,7 +33,6 @@ jobs:
           ARCHIVE="miro-${VERSION}-${TARGET}.tar.gz"
           tar -czf "${ARCHIVE}" -C "target/${TARGET}/release" miro
           echo "ARCHIVE=${ARCHIVE}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -66,17 +65,12 @@ jobs:
       - name: Generate checksums.txt
         run: shasum -a 256 miro-*.tar.gz > checksums.txt
 
-      - name: Write release notes
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          printf '## miro v%s\n\n### 설치\n\n```bash\nbrew install Ruska-Zone/tap/miro\n```\n\n### 업그레이드\n\n```bash\nbrew upgrade Ruska-Zone/tap/miro\n```\n' "${VERSION}" > release-notes.md
-
       - name: Create GitHub Release
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           gh release create "v${VERSION}" \
             --title "miro v${VERSION}" \
-            --notes-file release-notes.md \
+            --notes "miro v${VERSION} - brew install Ruska-Zone/tap/miro" \
             miro-*.tar.gz checksums.txt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,20 +87,10 @@ jobs:
     needs: release
     runs-on: macos-latest
     steps:
-      - name: Download checksums
-        uses: actions/download-artifact@v4
+      - name: Checkout miro (for scripts)
+        uses: actions/checkout@v4
         with:
-          name: checksums
-
-      - name: Extract SHA256 values
-        id: sha
-        run: |
-          VERSION="${{ needs.release.outputs.version }}"
-          ARM_SHA=$(grep "aarch64-apple-darwin" checksums.txt | awk '{print $1}')
-          X86_SHA=$(grep "x86_64-apple-darwin" checksums.txt | awk '{print $1}')
-          echo "arm_sha=${ARM_SHA}" >> $GITHUB_OUTPUT
-          echo "x86_sha=${X86_SHA}" >> $GITHUB_OUTPUT
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          path: miro-src
 
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
@@ -115,49 +99,20 @@ jobs:
           token: ${{ secrets.TAP_GITHUB_TOKEN }}
           path: homebrew-tap
 
-      - name: Update formula
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: checksums
+
+      - name: Write updated formula
         run: |
-          VERSION="${{ steps.sha.outputs.version }}"
-          ARM_SHA="${{ steps.sha.outputs.arm_sha }}"
-          X86_SHA="${{ steps.sha.outputs.x86_sha }}"
-          python3 - <<'PYEOF'
-import os, textwrap
-version = os.environ["VERSION"]
-arm_sha = os.environ["ARM_SHA"]
-x86_sha = os.environ["X86_SHA"]
-formula = textwrap.dedent(f"""
-    class Miro < Formula
-      desc "Terminal TUI for managing codex/claude-code sessions"
-      homepage "https://github.com/dambyworld/miro"
-      version "{version}"
-
-      on_macos do
-        if Hardware::CPU.arm?
-          url "https://github.com/dambyworld/miro/releases/download/v{version}/miro-{version}-aarch64-apple-darwin.tar.gz"
-          sha256 "{arm_sha}"
-        else
-          url "https://github.com/dambyworld/miro/releases/download/v{version}/miro-{version}-x86_64-apple-darwin.tar.gz"
-          sha256 "{x86_sha}"
-        end
-      end
-
-      def install
-        bin.install "miro"
-      end
-
-      test do
-        system "#{bin}/miro", "--version"
-      end
-    end
-""").lstrip()
-os.makedirs("homebrew-tap/Formula", exist_ok=True)
-open("homebrew-tap/Formula/miro.rb", "w").write(formula)
-print("Formula written.")
-PYEOF
-        env:
-          VERSION: ${{ steps.sha.outputs.version }}
-          ARM_SHA: ${{ steps.sha.outputs.arm_sha }}
-          X86_SHA: ${{ steps.sha.outputs.x86_sha }}
+          ARM_SHA=$(grep "aarch64-apple-darwin" checksums.txt | awk '{print $1}')
+          X86_SHA=$(grep "x86_64-apple-darwin" checksums.txt | awk '{print $1}')
+          MIRO_VERSION="${{ needs.release.outputs.version }}" \
+          ARM_SHA256="${ARM_SHA}" \
+          X86_SHA256="${X86_SHA}" \
+          OUTPUT_FILE="homebrew-tap/Formula/miro.rb" \
+          python3 miro-src/scripts/write-formula.py
 
       - name: Commit and push formula update
         run: |
@@ -165,7 +120,7 @@ PYEOF
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/miro.rb
-          git commit -m "miro: update to v${{ steps.sha.outputs.version }}"
+          git commit -m "miro: update to v${{ needs.release.outputs.version }}"
           git push
 
   install-test:
@@ -183,7 +138,7 @@ PYEOF
           VERSION="${{ needs.release.outputs.version }}"
           INSTALLED=$(miro --version | awk '{print $2}')
           echo "Expected: ${VERSION}, Got: ${INSTALLED}"
-          [ "${INSTALLED}" = "${VERSION}" ] || (echo "Version mismatch!" && exit 1)
+          test "${INSTALLED}" = "${VERSION}"
 
       - name: Verify architecture
         run: file $(which miro)
