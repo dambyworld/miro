@@ -1,2 +1,5 @@
 /target
 docs/*.md
+/.idea
+/.aiassistant
+/.junie
