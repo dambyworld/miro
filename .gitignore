@@ -3,3 +3,4 @@ docs/*.md
 /.idea
 /.aiassistant
 /.junie
+.revive/

@@ -18,6 +18,7 @@ pub enum ThemeName {
     TokyoNight,
     SolarizedDark,
     SolarizedLight,
+    MsDos,
 }
 
 impl ThemeName {
@@ -37,6 +38,7 @@ impl ThemeName {
             Self::TokyoNight => "Tokyo Night",
             Self::SolarizedDark => "Solarized Dark",
             Self::SolarizedLight => "Solarized Light",
+            Self::MsDos => "MS-DOS",
         }
     }
 
@@ -56,6 +58,7 @@ impl ThemeName {
             Self::TokyoNight => "City night dark palette with blue-violet accents",
             Self::SolarizedDark => "Scientifically-designed teal dark palette",
             Self::SolarizedLight => "Scientifically-designed ivory light palette",
+            Self::MsDos => "Retro black & phosphor-green CRT terminal theme",
         }
     }
 
@@ -75,6 +78,7 @@ impl ThemeName {
             Self::TokyoNight => "tokyo-night",
             Self::SolarizedDark => "solarized-dark",
             Self::SolarizedLight => "solarized-light",
+            Self::MsDos => "ms-dos",
         }
     }
 
@@ -94,6 +98,7 @@ impl ThemeName {
             "tokyo-night" => Some(Self::TokyoNight),
             "solarized-dark" => Some(Self::SolarizedDark),
             "solarized-light" => Some(Self::SolarizedLight),
+            "ms-dos" => Some(Self::MsDos),
             _ => None,
         }
     }
@@ -114,6 +119,7 @@ impl ThemeName {
             ThemeName::TokyoNight,
             ThemeName::SolarizedDark,
             ThemeName::SolarizedLight,
+            ThemeName::MsDos,
         ]
     }
 }
@@ -156,6 +162,7 @@ impl Theme {
             ThemeName::TokyoNight => tokyo_night_theme(),
             ThemeName::SolarizedDark => solarized_dark_theme(),
             ThemeName::SolarizedLight => solarized_light_theme(),
+            ThemeName::MsDos => ms_dos_theme(),
         }
     }
 }
@@ -692,6 +699,44 @@ fn solarized_light_theme() -> Theme {
     }
 }
 
+fn ms_dos_theme() -> Theme {
+    Theme {
+        id: ThemeName::MsDos,
+        app_background: Style::default().bg(Color::Rgb(0x00, 0x00, 0x00)),
+        header: Style::default()
+            .fg(Color::Rgb(0x00, 0xff, 0x41))
+            .bg(Color::Rgb(0x00, 0x1f, 0x08))
+            .add_modifier(Modifier::BOLD),
+        header_border: Style::default().fg(Color::Rgb(0x00, 0xb3, 0x2c)),
+        list_border: Style::default().fg(Color::Rgb(0x00, 0xb3, 0x2c)),
+        selected_row: Style::default()
+            .bg(Color::Rgb(0x00, 0xff, 0x41))
+            .fg(Color::Rgb(0x00, 0x00, 0x00))
+            .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        title: Style::default().fg(Color::Rgb(0x00, 0xff, 0x41)),
+        preview: Style::default().fg(Color::Rgb(0x00, 0xcc, 0x35)),
+        meta: Style::default().fg(Color::Rgb(0x00, 0x59, 0x16)),
+        footer: Style::default()
+            .fg(Color::Rgb(0x00, 0xb3, 0x2c))
+            .bg(Color::Rgb(0x00, 0x00, 0x00)),
+        footer_hint: Style::default()
+            .fg(Color::Rgb(0x00, 0xff, 0x41))
+            .add_modifier(Modifier::BOLD),
+        footer_status: Style::default().fg(Color::Rgb(0x00, 0xb3, 0x2c)),
+        dialog: Style::default()
+            .fg(Color::Rgb(0x00, 0xff, 0x41))
+            .bg(Color::Rgb(0x00, 0x1f, 0x08)),
+        dialog_border: Style::default().fg(Color::Rgb(0x00, 0xff, 0x41)),
+        empty_state: Style::default().fg(Color::Rgb(0x00, 0x59, 0x16)),
+        codex_badge: Style::default()
+            .fg(Color::Rgb(0x00, 0xff, 0x41))
+            .add_modifier(Modifier::BOLD),
+        claude_badge: Style::default()
+            .fg(Color::Rgb(0x00, 0xcc, 0x35))
+            .add_modifier(Modifier::BOLD),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Theme, ThemeName};
@@ -727,6 +772,7 @@ mod tests {
                 ThemeName::TokyoNight,
                 ThemeName::SolarizedDark,
                 ThemeName::SolarizedLight,
+                ThemeName::MsDos,
             ]
         );
     }
@@ -810,5 +856,17 @@ mod tests {
         assert_eq!(ThemeName::GruvboxDark.cli_id(), "gruvbox-dark");
         assert_eq!(ThemeName::CatppuccinMocha.cli_id(), "catppuccin-mocha");
         assert_eq!(ThemeName::SolarizedLight.cli_id(), "solarized-light");
+        assert_eq!(ThemeName::MsDos.cli_id(), "ms-dos");
+    }
+
+    #[test]
+    fn resolves_ms_dos_theme() {
+        let theme = Theme::get(ThemeName::MsDos);
+        assert_eq!(theme.id, ThemeName::MsDos);
+    }
+
+    #[test]
+    fn from_cli_id_parses_ms_dos() {
+        assert_eq!(ThemeName::from_cli_id("ms-dos"), Some(ThemeName::MsDos));
     }
 }
