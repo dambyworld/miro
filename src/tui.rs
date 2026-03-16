@@ -1,6 +1,7 @@
 use std::io::{self, Stdout};
 
 use anyhow::Result;
+use chrono::{DateTime, Local};
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::execute;
@@ -105,7 +106,7 @@ fn run_event_loop(
             KeyCode::Down => app.select_next(),
             KeyCode::Char('/') => app.search_mode = true,
             KeyCode::Char('f') => app.cycle_provider_filter()?,
-            KeyCode::Char('r') => app.reload()?,
+            KeyCode::Char('r') => app.refresh_with_feedback(),
             KeyCode::Char('t') => app.open_theme_menu(),
             KeyCode::Char('d') => {
                 if app.selected_session().is_some() {
@@ -120,7 +121,7 @@ fn run_event_loop(
                     match result {
                         Ok(()) => {
                             app.status = Some("resumed session and returned to Miro".to_string());
-                            app.reload()?;
+                            app.refresh_without_status()?;
                         }
                         Err(error) => {
                             app.status = Some(format!("resume failed: {error}"));
@@ -159,6 +160,8 @@ struct AppState {
     search_mode: bool,
     confirm_delete: bool,
     status: Option<String>,
+    last_refreshed_at: Option<DateTime<Local>>,
+    last_refresh_count: usize,
     theme: Theme,
     theme_menu_open: bool,
     theme_selected: usize,
@@ -171,7 +174,9 @@ impl AppState {
             .iter()
             .position(|candidate| *candidate == theme.id)
             .unwrap_or(0);
-        Ok(Self {
+        let initial_count = sessions.len();
+        let refreshed_at = Local::now();
+        let mut app = Self {
             manager,
             sessions,
             selected: 0,
@@ -180,18 +185,37 @@ impl AppState {
             search_mode: false,
             confirm_delete: false,
             status: None,
+            last_refreshed_at: None,
+            last_refresh_count: 0,
             theme,
             theme_menu_open: false,
             theme_selected,
-        })
+        };
+        app.record_refresh(refreshed_at, initial_count);
+        app.status = Some(format_refresh_status(initial_count, refreshed_at));
+        Ok(app)
     }
 
-    fn reload(&mut self) -> Result<()> {
+    fn refresh_without_status(&mut self) -> Result<()> {
         self.sessions = self.manager.list_sessions(self.provider_filter)?;
         self.selected = self
             .selected
             .min(self.filtered_sessions().len().saturating_sub(1));
         Ok(())
+    }
+
+    fn refresh_with_feedback(&mut self) {
+        match self.refresh_without_status() {
+            Ok(()) => {
+                let refreshed_at = Local::now();
+                let visible_count = self.filtered_sessions().len();
+                self.record_refresh(refreshed_at, visible_count);
+                self.status = Some(format_refresh_status(visible_count, refreshed_at));
+            }
+            Err(error) => {
+                self.status = Some(format!("refresh failed: {error}"));
+            }
+        }
     }
 
     fn cycle_provider_filter(&mut self) -> Result<()> {
@@ -200,9 +224,14 @@ impl AppState {
             Some(ProviderKind::Codex) => Some(ProviderKind::ClaudeCode),
             Some(ProviderKind::ClaudeCode) => None,
         };
-        self.reload()?;
+        self.refresh_without_status()?;
         self.reset_selection();
         Ok(())
+    }
+
+    fn record_refresh(&mut self, refreshed_at: DateTime<Local>, visible_count: usize) {
+        self.last_refreshed_at = Some(refreshed_at);
+        self.last_refresh_count = visible_count;
     }
 
     fn reset_selection(&mut self) {
@@ -258,7 +287,7 @@ impl AppState {
                 session.provider, session.session_id
             ));
             self.confirm_delete = false;
-            self.reload()?;
+            self.refresh_without_status()?;
         }
         Ok(())
     }
@@ -301,7 +330,7 @@ impl AppState {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),
+                Constraint::Length(4),
                 Constraint::Min(10),
                 Constraint::Length(3),
             ])
@@ -318,13 +347,23 @@ impl AppState {
         } else {
             format!("search: {}", self.query)
         };
-        let header = Paragraph::new(format!(
-            " MIRO  theme:{}  filter:{}  sessions:{}  {} ",
-            self.theme.id.display_name(),
-            filter_label,
-            self.filtered_sessions().len(),
-            search_label
-        ))
+        let refreshed_label = self
+            .last_refreshed_at
+            .map(format_refresh_time)
+            .unwrap_or_else(|| "-".to_string());
+        let header = Paragraph::new(Text::from(vec![
+            Line::from(vec![
+                Span::raw(" MIRO  "),
+                Span::raw(format!("theme:{}  ", self.theme.id.display_name())),
+                Span::raw(format!("filter:{}  ", filter_label)),
+                Span::raw(format!("sessions:{} ", self.filtered_sessions().len())),
+            ]),
+            Line::from(vec![
+                Span::raw(format!(" refreshed:{}  ", refreshed_label)),
+                Span::raw(" search:"),
+                Span::raw(compact_search_label(&search_label)),
+            ]),
+        ]))
         .style(self.theme.header)
         .block(
             Block::default()
@@ -461,6 +500,25 @@ impl AppState {
     }
 }
 
+fn format_refresh_time(refreshed_at: DateTime<Local>) -> String {
+    refreshed_at.format("%H:%M:%S").to_string()
+}
+
+fn format_refresh_status(visible_count: usize, refreshed_at: DateTime<Local>) -> String {
+    format!(
+        "refreshed {} sessions at {}",
+        visible_count,
+        format_refresh_time(refreshed_at)
+    )
+}
+
+fn compact_search_label(search_label: &str) -> String {
+    search_label
+        .strip_prefix("search: ")
+        .unwrap_or(search_label)
+        .to_string()
+}
+
 fn centered_rect(
     percent_x: u16,
     percent_y: u16,
@@ -482,4 +540,32 @@ fn centered_rect(
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Local, TimeZone};
+
+    use super::{compact_search_label, format_refresh_status, format_refresh_time};
+
+    #[test]
+    fn formats_refresh_time_for_header() {
+        let refreshed_at = Local.with_ymd_and_hms(2026, 3, 16, 13, 25, 8).unwrap();
+        assert_eq!(format_refresh_time(refreshed_at), "13:25:08");
+    }
+
+    #[test]
+    fn formats_refresh_status_for_footer() {
+        let refreshed_at = Local.with_ymd_and_hms(2026, 3, 16, 13, 25, 8).unwrap();
+        assert_eq!(
+            format_refresh_status(24, refreshed_at),
+            "refreshed 24 sessions at 13:25:08"
+        );
+    }
+
+    #[test]
+    fn compacts_search_label_for_second_header_row() {
+        assert_eq!(compact_search_label("search: /"), "/");
+        assert_eq!(compact_search_label("search: codex"), "codex");
+    }
 }
