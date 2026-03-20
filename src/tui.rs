@@ -457,12 +457,12 @@ impl AppState {
         frame.render_stateful_widget(list, chunks[1], &mut state);
 
         let help_text =
-            " Up/Down move  Enter resume  c copy-id  t theme  d delete  f filter  r refresh  q quit ";
+            " Up/Down move  Enter resume  c copy-id  t theme  d delete  f filter  r refresh ";
         let status_text = self.status.as_deref().unwrap_or(" ready ");
         let footer = Paragraph::new(Text::from(vec![
             Line::from(Span::styled(help_text, self.theme.footer_hint)),
             Line::from(vec![
-                Span::styled(" / search  ", self.theme.footer_hint),
+                Span::styled(" / search  q quit  ", self.theme.footer_hint),
                 Span::styled(format!("| {}", status_text), self.theme.footer_status),
             ]),
         ]))
