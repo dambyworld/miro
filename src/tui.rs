@@ -108,6 +108,7 @@ fn run_event_loop(
             KeyCode::Char('f') => app.cycle_provider_filter()?,
             KeyCode::Char('r') => app.refresh_with_feedback(),
             KeyCode::Char('t') => app.open_theme_menu(),
+            KeyCode::Char('c') => app.copy_selected_session_id(),
             KeyCode::Char('d') => {
                 if app.selected_session().is_some() {
                     app.confirm_delete = true;
@@ -279,6 +280,29 @@ impl AppState {
         self.selected = self.selected.saturating_sub(1);
     }
 
+    fn copy_selected_session_id(&mut self) {
+        let Some(session) = self.selected_session() else {
+            return;
+        };
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let result = Command::new("pbcopy")
+            .stdin(Stdio::piped())
+            .spawn()
+            .and_then(|mut child| {
+                child
+                    .stdin
+                    .as_mut()
+                    .unwrap()
+                    .write_all(session.session_id.as_bytes())?;
+                child.wait()
+            });
+        self.status = match result {
+            Ok(_) => Some(format!("copied: {}", session.session_id)),
+            Err(e) => Some(format!("copy failed: {e}")),
+        };
+    }
+
     fn delete_selected(&mut self) -> Result<()> {
         if let Some(session) = self.selected_session() {
             self.manager.delete_session(&session)?;
@@ -425,7 +449,7 @@ impl AppState {
         frame.render_stateful_widget(list, chunks[1], &mut state);
 
         let help_text =
-            " Up/Down move  Enter resume  t theme  d delete  f filter  / search  r refresh  q quit ";
+            " Up/Down move  Enter resume  c copy-id  t theme  d delete  f filter  / search  r refresh  q quit ";
         let status_text = self.status.as_deref().unwrap_or(" ready ");
         let footer = Paragraph::new(Text::from(Line::from(vec![
             Span::styled(help_text, self.theme.footer_hint),
