@@ -375,12 +375,20 @@ impl AppState {
             .last_refreshed_at
             .map(format_refresh_time)
             .unwrap_or_else(|| "-".to_string());
+        let selected_id_label = self
+            .selected_session()
+            .map(|s| {
+                let short = &s.session_id[..s.session_id.len().min(8)];
+                format!("id:{short}")
+            })
+            .unwrap_or_else(|| "id:-".to_string());
         let header = Paragraph::new(Text::from(vec![
             Line::from(vec![
                 Span::raw(" MIRO  "),
                 Span::raw(format!("theme:{}  ", self.theme.id.display_name())),
                 Span::raw(format!("filter:{}  ", filter_label)),
-                Span::raw(format!("sessions:{} ", self.filtered_sessions().len())),
+                Span::raw(format!("sessions:{}  ", self.filtered_sessions().len())),
+                Span::raw(selected_id_label),
             ]),
             Line::from(vec![
                 Span::raw(format!(" refreshed:{}  ", refreshed_label)),
