@@ -356,7 +356,7 @@ impl AppState {
             .constraints([
                 Constraint::Length(4),
                 Constraint::Min(10),
-                Constraint::Length(3),
+                Constraint::Length(4),
             ])
             .split(frame.area());
 
@@ -379,7 +379,7 @@ impl AppState {
             .selected_session()
             .map(|s| {
                 let short = &s.session_id[..s.session_id.len().min(8)];
-                format!("id:{short}")
+                format!("id:{short}...")
             })
             .unwrap_or_else(|| "id:-".to_string());
         let header = Paragraph::new(Text::from(vec![
@@ -459,11 +459,10 @@ impl AppState {
         let help_text =
             " Up/Down move  Enter resume  c copy-id  t theme  d delete  f filter  / search  r refresh  q quit ";
         let status_text = self.status.as_deref().unwrap_or(" ready ");
-        let footer = Paragraph::new(Text::from(Line::from(vec![
-            Span::styled(help_text, self.theme.footer_hint),
-            Span::raw(" "),
-            Span::styled(format!("| {}", status_text), self.theme.footer_status),
-        ])))
+        let footer = Paragraph::new(Text::from(vec![
+            Line::from(Span::styled(help_text, self.theme.footer_hint)),
+            Line::from(Span::styled(format!(" {}", status_text), self.theme.footer_status)),
+        ]))
         .style(self.theme.footer)
         .block(
             Block::default()
