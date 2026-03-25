@@ -104,6 +104,7 @@ fn run_event_loop(
             KeyCode::Char('q') => break,
             KeyCode::Up => app.select_previous(),
             KeyCode::Down => app.select_next(),
+            KeyCode::Esc => app.clear_search(),
             KeyCode::Char('/') => app.search_mode = true,
             KeyCode::Char('f') => app.cycle_provider_filter()?,
             KeyCode::Char('r') => app.refresh_with_feedback(),
@@ -239,28 +240,20 @@ impl AppState {
         self.selected = 0;
     }
 
+    fn clear_search(&mut self) {
+        if self.query.is_empty() {
+            return;
+        }
+        self.query.clear();
+        self.reset_selection();
+        self.status = Some("cleared search".to_string());
+    }
+
     fn filtered_sessions(&self) -> Vec<SessionRecord> {
         let query = self.query.trim().to_lowercase();
         self.sessions
             .iter()
-            .filter(|session| {
-                if query.is_empty() {
-                    return true;
-                }
-                session.title.to_lowercase().contains(&query)
-                    || session
-                        .preview
-                        .as_deref()
-                        .unwrap_or_default()
-                        .to_lowercase()
-                        .contains(&query)
-                    || session
-                        .cwd
-                        .display()
-                        .to_string()
-                        .to_lowercase()
-                        .contains(&query)
-            })
+            .filter(|session| session_matches_query(session, &query))
             .cloned()
             .collect()
     }
@@ -462,7 +455,7 @@ impl AppState {
         let footer = Paragraph::new(Text::from(vec![
             Line::from(Span::styled(help_text, self.theme.footer_hint)),
             Line::from(vec![
-                Span::styled(" / search  q quit  ", self.theme.footer_hint),
+                Span::styled(" / search  Esc clear-search  q quit  ", self.theme.footer_hint),
                 Span::styled(format!("| {}", status_text), self.theme.footer_status),
             ]),
         ]))
@@ -553,6 +546,62 @@ fn compact_search_label(search_label: &str) -> String {
         .to_string()
 }
 
+fn session_matches_query(session: &SessionRecord, query: &str) -> bool {
+    let normalized_query = query.trim().to_lowercase();
+    if normalized_query.is_empty() {
+        return true;
+    }
+
+    let session_id_query = normalize_session_id_query(&normalized_query);
+
+    session.title.to_lowercase().contains(&normalized_query)
+        || session
+            .preview
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(&normalized_query)
+        || session
+            .cwd
+            .display()
+            .to_string()
+            .to_lowercase()
+            .contains(&normalized_query)
+        || session
+            .session_id
+            .to_lowercase()
+            .contains(&session_id_query)
+}
+
+fn normalize_session_id_query(query: &str) -> String {
+    query
+        .trim_matches(|character: char| {
+            matches!(
+                character,
+                '/' | '\\'
+                    | '"'
+                    | '\''
+                    | '`'
+                    | '('
+                    | ')'
+                    | '['
+                    | ']'
+                    | '{'
+                    | '}'
+                    | '<'
+                    | '>'
+                    | '#'
+                    | '*'
+                    | '!'
+                    | ','
+                    | '.'
+                    | ':'
+                    | ';'
+            )
+        })
+        .to_string()
+}
+
 fn centered_rect(
     percent_x: u16,
     percent_y: u16,
@@ -578,9 +627,15 @@ fn centered_rect(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use chrono::{Local, TimeZone};
 
-    use super::{compact_search_label, format_refresh_status, format_refresh_time};
+    use super::{
+        compact_search_label, format_refresh_status, format_refresh_time,
+        normalize_session_id_query, session_matches_query,
+    };
+    use crate::model::{ProviderKind, SessionRecord};
 
     #[test]
     fn formats_refresh_time_for_header() {
@@ -601,5 +656,80 @@ mod tests {
     fn compacts_search_label_for_second_header_row() {
         assert_eq!(compact_search_label("search: /"), "/");
         assert_eq!(compact_search_label("search: codex"), "codex");
+    }
+
+    #[test]
+    fn matches_title_preview_cwd_and_session_id() {
+        let session = sample_session();
+
+        assert!(session_matches_query(&session, "alpha"));
+        assert!(session_matches_query(&session, "preview"));
+        assert!(session_matches_query(&session, "workspace/demo"));
+        assert!(session_matches_query(&session, "e1204e46"));
+    }
+
+    #[test]
+    fn matches_session_id_case_insensitively() {
+        let session = sample_session();
+
+        assert!(session_matches_query(
+            &session,
+            "E1204E46-55F8-4D13-8213-3A3EAAB0FB02"
+        ));
+        assert!(session_matches_query(&session, "55f8-4d13"));
+    }
+
+    #[test]
+    fn returns_true_for_empty_query_and_false_for_miss() {
+        let session = sample_session();
+
+        assert!(session_matches_query(&session, ""));
+        assert!(!session_matches_query(&session, "missing-value"));
+    }
+
+    #[test]
+    fn matches_session_id_even_with_wrapping_symbols() {
+        let session = sample_session();
+
+        assert!(session_matches_query(
+            &session,
+            "/e1204e46-55f8-4d13-8213-3a3eaab0fb02"
+        ));
+        assert!(session_matches_query(
+            &session,
+            "(e1204e46-55f8-4d13-8213-3a3eaab0fb02)"
+        ));
+        assert!(session_matches_query(
+            &session,
+            "\"e1204e46-55f8-4d13-8213-3a3eaab0fb02\""
+        ));
+    }
+
+    #[test]
+    fn normalizes_only_wrapping_symbols_for_session_id_query() {
+        assert_eq!(
+            normalize_session_id_query("/e1204e46-55f8-4d13-8213-3a3eaab0fb02"),
+            "e1204e46-55f8-4d13-8213-3a3eaab0fb02"
+        );
+        assert_eq!(
+            normalize_session_id_query("(abc-123)"),
+            "abc-123"
+        );
+        assert_eq!(
+            normalize_session_id_query("abc-123"),
+            "abc-123"
+        );
+    }
+
+    fn sample_session() -> SessionRecord {
+        SessionRecord {
+            provider: ProviderKind::Codex,
+            session_id: "e1204e46-55f8-4d13-8213-3a3eaab0fb02".to_string(),
+            title: "Alpha Session".to_string(),
+            preview: Some("Preview text".to_string()),
+            cwd: PathBuf::from("/tmp/workspace/demo"),
+            updated_at: Local.with_ymd_and_hms(2026, 3, 16, 13, 25, 8).unwrap().to_utc(),
+            file_path: PathBuf::from("/tmp/session.jsonl"),
+        }
     }
 }
