@@ -10,6 +10,7 @@ use serde::Serialize;
 pub enum ProviderKind {
     Codex,
     ClaudeCode,
+    OpenCode,
 }
 
 impl ProviderKind {
@@ -17,6 +18,7 @@ impl ProviderKind {
         match self {
             Self::Codex => "codex",
             Self::ClaudeCode => "claude-code",
+            Self::OpenCode => "opencode",
         }
     }
 
@@ -24,6 +26,7 @@ impl ProviderKind {
         match self {
             Self::Codex => CommandSpec::new("codex", ["resume", session_id]),
             Self::ClaudeCode => CommandSpec::new("claude", ["--resume", session_id]),
+            Self::OpenCode => CommandSpec::new("opencode", ["resume", session_id]),
         }
     }
 }
