@@ -10,6 +10,7 @@ use serde::Serialize;
 pub enum ProviderKind {
     Codex,
     ClaudeCode,
+    #[value(name = "opencode")]
     OpenCode,
 }
 

@@ -49,7 +49,8 @@ pub enum ListOutput {
 mod tests {
     use clap::Parser;
 
-    use super::Cli;
+    use super::{Cli, Commands};
+    use crate::model::ProviderKind;
     use crate::theme::ThemeName;
 
     #[test]
@@ -94,5 +95,35 @@ mod tests {
     fn parses_themes_command() {
         let cli = Cli::parse_from(["miro", "themes"]);
         assert!(matches!(cli.command, Some(super::Commands::Themes)));
+    }
+
+    #[test]
+    fn parses_codex_provider_filter() {
+        let cli = Cli::parse_from(["miro", "list", "--provider", "codex"]);
+
+        let Some(Commands::List { provider, .. }) = cli.command else {
+            panic!("expected list command");
+        };
+        assert_eq!(provider, Some(ProviderKind::Codex));
+    }
+
+    #[test]
+    fn parses_claude_code_provider_filter() {
+        let cli = Cli::parse_from(["miro", "list", "--provider", "claude-code"]);
+
+        let Some(Commands::List { provider, .. }) = cli.command else {
+            panic!("expected list command");
+        };
+        assert_eq!(provider, Some(ProviderKind::ClaudeCode));
+    }
+
+    #[test]
+    fn parses_opencode_provider_filter() {
+        let cli = Cli::parse_from(["miro", "list", "--provider", "opencode"]);
+
+        let Some(Commands::List { provider, .. }) = cli.command else {
+            panic!("expected list command");
+        };
+        assert_eq!(provider, Some(ProviderKind::OpenCode));
     }
 }
