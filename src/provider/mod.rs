@@ -1,5 +1,6 @@
 mod claude;
 mod codex;
+mod opencode;
 
 use std::path::PathBuf;
 
@@ -11,6 +12,7 @@ pub fn build_providers() -> Result<Vec<Box<dyn SessionProvider>>> {
     Ok(vec![
         Box::new(codex::CodexProvider::new()?),
         Box::new(claude::ClaudeProvider::new()?),
+        Box::new(opencode::OpenCodeProvider::new()?),
     ])
 }
 
