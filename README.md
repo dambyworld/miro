@@ -1,12 +1,12 @@
 # miro ✨
 
-> codex랑 claude-code 세션을 한눈에 볼 수 있는 터미널 TUI예요 🌸
+> codex, claude-code, opencode 세션을 한눈에 볼 수 있는 터미널 TUI예요 🌸
 
 ---
 
 ## 이런 분들께 딱이에요 💕
 
-- `codex`랑 `claude-code` 세션이 너무 많아서 어디 있는지 모르겠을 때
+- `codex`, `claude-code`, `opencode` 세션이 너무 많아서 어디 있는지 모르겠을 때
 - 이전 대화를 빠르게 다시 열고 싶을 때
 - 필요 없는 세션을 깔끔하게 정리하고 싶을 때
 
