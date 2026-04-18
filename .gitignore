@@ -4,3 +4,4 @@ docs/*.md
 /.aiassistant
 /.junie
 .revive/
+/.worktrees
