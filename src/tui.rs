@@ -224,7 +224,8 @@ impl AppState {
         self.provider_filter = match self.provider_filter {
             None => Some(ProviderKind::Codex),
             Some(ProviderKind::Codex) => Some(ProviderKind::ClaudeCode),
-            Some(ProviderKind::ClaudeCode) => None,
+            Some(ProviderKind::ClaudeCode) => Some(ProviderKind::OpenCode),
+            Some(ProviderKind::OpenCode) => None,
         };
         self.refresh_without_status()?;
         self.reset_selection();
@@ -412,6 +413,7 @@ impl AppState {
                     let provider_style = match session.provider {
                         ProviderKind::Codex => self.theme.codex_badge,
                         ProviderKind::ClaudeCode => self.theme.claude_badge,
+                        ProviderKind::OpenCode => self.theme.opencode_badge,
                     };
 
                     ListItem::new(Line::from(vec![

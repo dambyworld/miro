@@ -143,6 +143,7 @@ pub struct Theme {
     pub empty_state: Style,
     pub codex_badge: Style,
     pub claude_badge: Style,
+    pub opencode_badge: Style,
 }
 
 impl Theme {
@@ -202,6 +203,9 @@ fn default_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x65, 0xd6, 0xad))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x5a, 0xa8, 0xf7))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -239,6 +243,9 @@ fn tomorrow_night_blue_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x8f, 0xe0, 0xbd))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x6a, 0xb0, 0xff))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -278,6 +285,9 @@ fn cursor_dark_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x79, 0xd2, 0xa6))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x5c, 0x8a, 0xff))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -315,6 +325,9 @@ fn darcula_dark_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x81, 0xd4, 0xbe))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x53, 0x9b, 0xf5))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -354,6 +367,9 @@ fn darcula_light_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x0c, 0x8a, 0x67))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x25, 0x63, 0xeb))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -391,6 +407,9 @@ fn dracula_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x50, 0xfa, 0x7b))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x8b, 0xe9, 0xfd))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -430,6 +449,9 @@ fn nord_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x88, 0xc0, 0xd0))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x5e, 0x81, 0xac))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -467,6 +489,9 @@ fn one_dark_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x98, 0xc3, 0x79))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x61, 0xaf, 0xef))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -506,6 +531,9 @@ fn gruvbox_dark_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0xb8, 0xbb, 0x26))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x45, 0x85, 0x88))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -543,6 +571,9 @@ fn gruvbox_light_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x42, 0x7b, 0x58))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x07, 0x66, 0x78))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -582,6 +613,9 @@ fn catppuccin_mocha_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0xa6, 0xe3, 0xa1))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x89, 0xb4, 0xfa))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -619,6 +653,9 @@ fn tokyo_night_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x9e, 0xce, 0x6a))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x7a, 0xa2, 0xf7))
             .add_modifier(Modifier::BOLD),
     }
 }
@@ -658,6 +695,9 @@ fn solarized_dark_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x2a, 0xa1, 0x98))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x26, 0x8b, 0xd2))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -696,6 +736,9 @@ fn solarized_light_theme() -> Theme {
         claude_badge: Style::default()
             .fg(Color::Rgb(0x2a, 0xa1, 0x98))
             .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x26, 0x8b, 0xd2))
+            .add_modifier(Modifier::BOLD),
     }
 }
 
@@ -733,6 +776,9 @@ fn ms_dos_theme() -> Theme {
             .add_modifier(Modifier::BOLD),
         claude_badge: Style::default()
             .fg(Color::Rgb(0x00, 0xcc, 0x35))
+            .add_modifier(Modifier::BOLD),
+        opencode_badge: Style::default()
+            .fg(Color::Rgb(0x00, 0xcc, 0xff))
             .add_modifier(Modifier::BOLD),
     }
 }
